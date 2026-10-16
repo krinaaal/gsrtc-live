@@ -202,24 +202,69 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
     return round(bearing, 1)
 
 def matches_station(stop, code):
-    """Checks whether a stop matches a station code or any of its aliases."""
+    """Checks whether a stop matches a station code or any of its aliases with strict isolation."""
     if not stop or not code:
         return False
     pcode = stop.get('placeCode', '').upper().strip()
     pname = stop.get('placeName', '').upper().strip()
-    aliases = STATION_ALIASES.get(code.upper(), [code.upper()])
+    code = code.upper().strip()
+
+    # 1. Exact placeCode match
+    exact_codes = {
+        'KDN': ['KDN'],
+        'PRC': ['PRC', 'PRCH'],
+        'PRCH': ['PRC', 'PRCH'],
+        'VRL': ['VRL', 'VRLL'],
+        'UNA': ['UNA'],
+        'DIU': ['DIU'],
+        'SMN': ['SMN', 'SMNT'],
+        'SMNT': ['SMN', 'SMNT'],
+        'JND': ['JND'],
+        'UPT': ['UPT', 'UPL'],
+        'UPL': ['UPT', 'UPL'],
+        'DRJ': ['DRJ', 'DHJ'],
+        'DHJ': ['DRJ', 'DHJ'],
+        'KSD': ['KSD'],
+        'GDU': ['GDU'],
+        'DLS': ['DLS'],
+        'KSRY': ['KSRY'],
+        'GRKMD': ['GRKMD'],
+        'RJT': ['RJT', 'RJTB'],
+        'PBR': ['PBR'],
+        'MNG': ['MNG', 'MGL'],
+        'MGL': ['MNG', 'MGL'],
+        'RJL': ['RJL'],
+        'MHV': ['MHV'],
+        'BVN': ['BVN'],
+        'ADI': ['ADI', 'GTM', 'ABD']
+    }
+
+    if code in exact_codes and pcode in exact_codes[code]:
+        return True
+
+    # 2. Strict exclusions for compound taluka station names:
+    # E.g. "PRANCHI KODINAR" or "DOLASA KDN" must NOT match Kodinar depot
+    if code == 'KDN' and ('PRAC' in pname or 'PRAN' in pname or 'DOLASA' in pname or pcode in ('PRC', 'PRCH', 'DLS')):
+        return False
+    # "KESARIYA UNA" must NOT match Una depot
+    if code == 'UNA' and ('KESAR' in pname or pcode == 'KSRY'):
+        return False
+    # "GORAKH MADHI SOMNATH" must NOT match Somnath depot
+    if code in ('SMN', 'SMNT') and ('GORAKH' in pname or pcode == 'GRKMD'):
+        return False
+    # "CHORVAD MGL" must NOT match Mangrol depot
+    if code in ('MNG', 'MGL') and ('CHORVAD' in pname or pcode == 'CHRVD'):
+        return False
+
+    aliases = STATION_ALIASES.get(code, [code])
 
     for a in aliases:
         if pcode == a:
-            return True
-        if a in pcode:
             return True
 
     words = pname.replace('-', ' ').replace('/', ' ').split()
     for a in aliases:
         if a in words:
-            return True
-        if len(a) >= 4 and a in pname:
             return True
 
     return False
@@ -394,16 +439,15 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 # "સમય ગાળો જે હોઈ એના પછી ની જ બસો બતાવ એટલે કે અત્યારે ૫ થયા તો 5 વાગા પછી ની બસો દેખાડવી"
                 # Exclude past buses that already departed (> 2 mins ago).
                 # Only show buses departing at or after current time (upcoming within 12 hours).
-                forward_diff = (dep_mins - cur_mins) % 1440
-
-                if forward_diff > 720 and forward_diff < 1438:
-                    # Departed more than 2 minutes ago -> SKIP past buses completely
+                # Allow 30-minute grace window for running buses currently at platform or en route
+                if forward_diff > 720 and forward_diff < 1410:
                     continue
 
-                if forward_diff >= 1438:
-                    # Departed within the last 1-2 minutes (just leaving platform)
+                if forward_diff >= 1410:
+                    # Arrived/departed within last 30 minutes (still en route or at platform)
+                    mins_ago = 1440 - forward_diff
                     sort_key = 0
-                    status = "પ્લેટફોર્મ પરથી રવાના થઈ રહી છે"
+                    status = f"પ્લેટફોર્મ પર છે / ઓન રોડ ({mins_ago} મિ. પહેલાં)"
                     statusClass = "running"
                 elif forward_diff <= 15:
                     # Upcoming at platform within 15 minutes
@@ -492,14 +536,15 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 st_time = stops[match_idx]['time']
                 st_mins = parse_time_minutes(st_time)
 
-                # Skip past buses departed > 2 minutes ago
+                # Allow 30-minute grace window for running buses currently at platform or en route
                 forward_diff = (st_mins - cur_mins) % 1440
-                if forward_diff > 720 and forward_diff < 1438:
+                if forward_diff > 720 and forward_diff < 1410:
                     continue
 
-                if forward_diff >= 1438:
+                if forward_diff >= 1410:
+                    mins_ago = 1440 - forward_diff
                     sort_key = 0
-                    status = "પ્લેટફોર્મ પરથી રવાના થઈ રહી છે"
+                    status = f"પ્લેટફોર્મ પર છે / ઓન રોડ ({mins_ago} મિ. પહેલાં)"
                 elif forward_diff <= 15:
                     sort_key = forward_diff
                     status = f"પ્લેટફોર્મ પર છે ({forward_diff} મિ.માં આવશે/ઉપડશે)"
@@ -570,6 +615,62 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         for i in range(1, len(route_points)):
             if route_points[i]['mins'] < route_points[i - 1]['mins']:
                 route_points[i]['mins'] += 1440
+
+        # Enrich corridor route segments that omit vital highway junctions (e.g. Veraval <-> Kodinar missing Prachi)
+        enriched_points = []
+        for i in range(len(route_points)):
+            enriched_points.append(route_points[i])
+            if i < len(route_points) - 1:
+                p_c = route_points[i]
+                p_n = route_points[i + 1]
+                pname_c = (p_c.get('placeName') or '').upper()
+                pname_n = (p_n.get('placeName') or '').upper()
+                pcode_c = (p_c.get('placeCode') or '').upper()
+                pcode_n = (p_n.get('placeCode') or '').upper()
+
+                # 1. VERAVAL -> KODINAR without Prachi
+                if ('VRL' in pcode_c or 'VERAVAL' in pname_c) and ('KDN' in pcode_n or 'KODINAR' in pname_n):
+                    t1 = p_c['mins']
+                    t2 = p_n['mins']
+                    prc_mins = t1 + max(35, int((t2 - t1) * 0.55))
+                    h = (prc_mins % 1440) // 60
+                    m = (prc_mins % 1440) % 60
+                    enriched_points.append({
+                        'placeName': 'PRANCHI KODINAR',
+                        'placeCode': 'PRCH',
+                        'time': f"{h:02d}:{m:02d}",
+                        'mins': prc_mins,
+                        'lat': 20.9380,
+                        'lng': 70.6120
+                    })
+                    if p_n['mins'] < prc_mins + 25:
+                        p_n['mins'] = prc_mins + 25
+                        h2 = (p_n['mins'] % 1440) // 60
+                        m2 = (p_n['mins'] % 1440) % 60
+                        p_n['time'] = f"{h2:02d}:{m2:02d}"
+
+                # 2. KODINAR -> VERAVAL without Prachi
+                elif ('KDN' in pcode_c or 'KODINAR' in pname_c) and ('VRL' in pcode_n or 'VERAVAL' in pname_n):
+                    t1 = p_c['mins']
+                    t2 = p_n['mins']
+                    prc_mins = t1 + max(25, int((t2 - t1) * 0.45))
+                    h = (prc_mins % 1440) // 60
+                    m = (prc_mins % 1440) % 60
+                    enriched_points.append({
+                        'placeName': 'PRANCHI KODINAR',
+                        'placeCode': 'PRCH',
+                        'time': f"{h:02d}:{m:02d}",
+                        'mins': prc_mins,
+                        'lat': 20.9380,
+                        'lng': 70.6120
+                    })
+                    if p_n['mins'] < prc_mins + 35:
+                        p_n['mins'] = prc_mins + 35
+                        h2 = (p_n['mins'] % 1440) // 60
+                        m2 = (p_n['mins'] % 1440) % 60
+                        p_n['time'] = f"{h2:02d}:{m2:02d}"
+
+        route_points = enriched_points
 
         start_mins = route_points[0]['mins']
         end_mins = route_points[-1]['mins']
