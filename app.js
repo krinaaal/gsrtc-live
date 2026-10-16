@@ -1255,7 +1255,7 @@ async function renderTrackingView(trackData, isSilent = false) {
   // Update Live Bus Card
   const card = document.getElementById('live-bus-card');
   if (card) {
-    const progressPercent = Math.round(trackData.progressRatio * 100);
+    const progressPercent = Math.round((trackData.overallProgress || trackData.progressRatio || 0) * 100);
     card.innerHTML = `
       <div class="bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-rose-200">
         <!-- Route & Status Badge -->
@@ -1282,13 +1282,19 @@ async function renderTrackingView(trackData, isSilent = false) {
           </span>
         </div>
 
+        <!-- Live Status Subtitle -->
+        <div class="text-[11px] font-bold text-rose-800 bg-rose-50/80 px-2.5 py-1 rounded-xl mb-2 border border-rose-100 flex items-center justify-between">
+          <span>🚦 ${trackData.status || loc.status}</span>
+          <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
+        </div>
+
         <!-- Progress Bar -->
-        <div class="my-2.5">
-          <div class="flex justify-between text-[11px] font-bold text-slate-600 mb-1">
+        <div class="my-2">
+          <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 mb-1">
             <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop}</strong></span>
             <span>આગળનું: <strong class="text-rose-700">${loc.nextStop} (${loc.etaNext})</strong></span>
           </div>
-          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+          <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
             <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
           </div>
         </div>
@@ -1780,12 +1786,18 @@ function renderPnrTrackingView(trackData, isSilent = false) {
           </span>
         </div>
 
-        <div class="my-2.5">
-          <div class="flex justify-between text-[11px] font-bold text-slate-600 mb-1">
+        <!-- Live Status Subtitle -->
+        <div class="text-[11px] font-bold text-rose-800 bg-rose-50/80 px-2.5 py-1 rounded-xl mb-2 border border-rose-100 flex items-center justify-between">
+          <span>🚦 ${trackData.status || loc.status}</span>
+          <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
+        </div>
+
+        <div class="my-2">
+          <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 mb-1">
             <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop}</strong></span>
             <span>આગળનું: <strong class="text-rose-700">${loc.nextStop} (${loc.etaNext})</strong></span>
           </div>
-          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+          <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
             <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
           </div>
         </div>

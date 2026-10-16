@@ -384,36 +384,33 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     duration_mins += 24 * 60
 
                 # User requirement:
-                # 1. Skip buses departed > 1 hour ago
-                # 2. Time must be shown chronologically forward (upwards)
+                # "સમય ગાળો જે હોઈ એના પછી ની જ બસો બતાવ એટલે કે અત્યારે ૫ થયા તો 5 વાગા પછી ની બસો દેખાડવી"
+                # Exclude past buses that already departed (> 2 mins ago).
+                # Only show buses departing at or after current time (upcoming within 12 hours).
                 forward_diff = (dep_mins - cur_mins) % 1440
-                is_currently_en_route = (dep_mins <= cur_mins <= arr_mins) if (arr_mins >= dep_mins) else (cur_mins >= dep_mins or cur_mins <= arr_mins)
 
-                if is_currently_en_route:
-                    mins_since_dep = (cur_mins - dep_mins) % 1440
-                    status = f"ઓન રોડ ({int(mins_since_dep)} મિ. પહેલાં રવાના થઈ)"
-                    statusClass = "running"
-                    sort_key = cur_mins - mins_since_dep
-                elif forward_diff >= 1380:
-                    # Departed within last 60 minutes
-                    sort_key = cur_mins - (1440 - forward_diff)
-                    status = f"હાલમાં જ રવાના થઈ ({1440 - forward_diff} મિ. પહેલાં)"
-                    statusClass = "running"
-                elif forward_diff <= 720:
-                    # Upcoming within next 12 hours
-                    sort_key = cur_mins + forward_diff
-                    if forward_diff <= 15:
-                        status = "પ્લેટફોર્મ પર છે (ઉપડવાની તૈયારી)"
-                        statusClass = "running"
-                    elif forward_diff <= 120:
-                        status = f"{forward_diff} મિનિટમાં ઉપડશે"
-                        statusClass = "upcoming"
-                    else:
-                        status = f"નિર્ધારિત સમય: {dep_time}"
-                        statusClass = "upcoming"
-                else:
-                    # Departed and already reached destination more than 1 hour ago -> skip
+                if forward_diff > 720 and forward_diff < 1438:
+                    # Departed more than 2 minutes ago -> SKIP past buses completely
                     continue
+
+                if forward_diff >= 1438:
+                    # Departed within the last 1-2 minutes (just leaving platform)
+                    sort_key = 0
+                    status = "પ્લેટફોર્મ પરથી રવાના થઈ રહી છે"
+                    statusClass = "running"
+                elif forward_diff <= 15:
+                    # Upcoming at platform within 15 minutes
+                    sort_key = forward_diff
+                    status = f"પ્લેટફોર્મ પર છે ({forward_diff} મિ.માં ઉપડશે)"
+                    statusClass = "running"
+                elif forward_diff <= 120:
+                    sort_key = forward_diff
+                    status = f"{forward_diff} મિનિટમાં ઉપડશે"
+                    statusClass = "upcoming"
+                else:
+                    sort_key = forward_diff
+                    status = f"નિર્ધારિત સમય: {dep_time}"
+                    statusClass = "upcoming"
 
                 details = gsrtc_client.get_trip_details(t) or {}
                 veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (dep_mins % 8999)}"
@@ -445,7 +442,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     'intermediateStops': [s['placeName'] for s in stops[from_idx:to_idx+1]]
                 })
 
-        # Sort chronologically ascending
+        # Sort chronologically ascending from current time onwards
         results.sort(key=lambda x: x['sortKey'])
         return results
 
@@ -488,21 +485,23 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 st_time = stops[match_idx]['time']
                 st_mins = parse_time_minutes(st_time)
 
-                # Skip buses departed > 1 hour ago
+                # Skip past buses departed > 2 minutes ago
                 forward_diff = (st_mins - cur_mins) % 1440
-                if forward_diff >= 1380:
-                    sort_key = cur_mins - (1440 - forward_diff)
-                    status = f"હાલમાં જ રવાના થઈ ({1440 - forward_diff} મિ. પહેલાં)"
-                elif forward_diff <= 720:
-                    sort_key = cur_mins + forward_diff
-                    if forward_diff <= 15:
-                        status = "પ્લેટફોર્મ પર છે (At Station)"
-                    elif forward_diff <= 120:
-                        status = f"{forward_diff} મિનિટમાં આવશે"
-                    else:
-                        status = f"સમય: {st_time}"
-                else:
+                if forward_diff > 720 and forward_diff < 1438:
                     continue
+
+                if forward_diff >= 1438:
+                    sort_key = 0
+                    status = "પ્લેટફોર્મ પરથી રવાના થઈ રહી છે"
+                elif forward_diff <= 15:
+                    sort_key = forward_diff
+                    status = f"પ્લેટફોર્મ પર છે ({forward_diff} મિ.માં આવશે/ઉપડશે)"
+                elif forward_diff <= 120:
+                    sort_key = forward_diff
+                    status = f"{forward_diff} મિનિટમાં આવશે"
+                else:
+                    sort_key = forward_diff
+                    status = f"સમય: {st_time}"
 
                 details = gsrtc_client.get_trip_details(t) or {}
                 veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (st_mins % 8999)}"
@@ -572,6 +571,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         if effective_cur_mins < start_mins and (effective_cur_mins + 1440) <= (end_mins + 60):
             effective_cur_mins += 1440
 
+        total_segs = max(1, len(route_points) - 1)
+
         if effective_cur_mins < start_mins:
             # Bus is upcoming at platform
             cur_seg_idx = 0
@@ -582,20 +583,23 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
             speed = 0.0
             diff = start_mins - effective_cur_mins
-            if diff <= 30:
+            if diff <= 15:
                 status_str = f"પ્લેટફોર્મ પર છે ({int(diff)} મિનિટમાં ઉપડશે)"
+                overall_progress = 0.05
             else:
-                status_str = f"નિર્ધારિત ઉપડવાનો સમય: {p1['time']}"
+                status_str = f"નિર્ધારિત ઉપડવાનો સમય: {p1['time']} ({int(diff)} મિ. બાકી)"
+                overall_progress = 0.02
         elif effective_cur_mins >= end_mins:
             # Bus reached final destination
             cur_seg_idx = len(route_points) - 2
             ratio = 1.0
+            overall_progress = 1.0
             p1 = route_points[-2]
             p2 = route_points[-1]
             cur_lat, cur_lng = p2['lat'], p2['lng']
             heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
             speed = 0.0
-            status_str = f"ગંતવ્ય સ્થાને પહોંચી ગઈ છે ({p2['placeName']})"
+            status_str = f"સફર પૂર્ણ થઈ ગઈ છે ({p2['placeName']})"
         else:
             # Bus is actively driving on road
             cur_seg_idx = 0
@@ -609,15 +613,18 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             t1 = p1['mins']
             t2 = p2['mins']
             if t2 > t1:
-                ratio = max(0.01, min(0.99, (effective_cur_mins - t1) / float(t2 - t1)))
+                ratio = max(0.02, min(0.98, (effective_cur_mins - t1) / float(t2 - t1)))
             else:
                 ratio = 0.5
 
             cur_lat = p1['lat'] + (p2['lat'] - p1['lat']) * ratio
             cur_lng = p1['lng'] + (p2['lng'] - p1['lng']) * ratio
             heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
-            speed = round(45.0 + 5.0 * math.sin(now.second * 0.15 + cur_seg_idx), 1)
+            speed = round(44.0 + 6.0 * math.sin(now.second * 0.15 + cur_seg_idx), 1)
             status_str = f"ઓન રોડ ({int(speed)} કિમી/કલાક) - {p1['placeName']} થી {p2['placeName']}"
+
+            # True overall route progress across all stops (e.g. 5% to 98%)
+            overall_progress = round(max(0.05, min(0.98, (cur_seg_idx + ratio) / float(total_segs))), 3)
 
         veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (route_points[0]['mins'] % 8999)}"
 
@@ -629,6 +636,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             'depotName': details.get('depotName', 'GSRTC'),
             'curSegIdx': cur_seg_idx,
             'segmentRatio': round(ratio, 4),
+            'progressRatio': overall_progress,
+            'overallProgress': overall_progress,
             'status': status_str,
             'currentLocation': {
                 'lat': round(cur_lat, 5),
@@ -642,7 +651,6 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'nextStop': p2['placeName'],
                 'etaNext': p2['time']
             },
-            'progressRatio': round(ratio, 3),
             'routePoints': route_points
         }
 
@@ -701,11 +709,15 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     matched_details = gsrtc_client.get_trip_details(tc)
                     break
 
-        # 4. Fallback if not found: assign to an active corridor trip with requested vehicle plate
+        # 4. Fallback if not found: assign to a trip currently driving on road
         if not matched_trip_code:
-            trips = gsrtc_client.get_live_trips()
-            fallback_candidates = [t for t in trips if any(k in t for k in ['VRL', 'UNA', 'KDN', 'JND', 'PBR', 'UPT'])]
-            matched_trip_code = fallback_candidates[0] if fallback_candidates else (trips[0] if trips else '1315UPTUNAEXP51')
+            active_list = self.get_active_vehicles()
+            if active_list:
+                matched_trip_code = active_list[0]['tripCode']
+            else:
+                trips = gsrtc_client.get_live_trips()
+                fallback_candidates = [t for t in trips if any(k in t for k in ['VRL', 'UNA', 'KDN', 'JND', 'PBR', 'UPT'])]
+                matched_trip_code = fallback_candidates[0] if fallback_candidates else (trips[0] if trips else '1200JMNUNAGJD47')
             matched_details = gsrtc_client.get_trip_details(matched_trip_code) or {}
 
         track_data = self.get_tracking_info(matched_trip_code)
@@ -722,15 +734,47 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         return {'success': True, 'data': track_data}
 
     def get_active_vehicles(self):
-        """Returns sample active live vehicles for 1-click test chips."""
-        samples = [
-            {'label': 'GJ-18-ZT-2061', 'route': 'ઉપલેટા - ઉના', 'tripCode': '1315UPTUNAEXP51', 'query': 'GJ-18-ZT-2061'},
-            {'label': 'GJ-18-ZT-3680', 'route': 'વેરાવળ - ભાવનગર', 'tripCode': '1615VRLBVNEXP51', 'query': 'GJ-18-ZT-3680'},
-            {'label': 'GJ-18-ZT-2868', 'route': 'પોરબંદર - દીવ', 'tripCode': '1415PBRDIUEXP51', 'query': 'GJ-18-ZT-2868'},
-            {'label': 'GJ-18-ZT-4671', 'route': 'જામનગર - ઉના', 'tripCode': '1630JMNUNAEXD51', 'query': 'GJ-18-ZT-4671'},
-            {'label': 'GJ-18-ZT-4099', 'route': 'જૂનાગઢ - ઉના', 'tripCode': '0700JNDUNAEXP51', 'query': 'GJ-18-ZT-4099'}
-        ]
-        return samples
+        """Returns sample active live vehicles driving on road right now for 1-click test chips."""
+        trips = gsrtc_client.get_live_trips()
+        now = datetime.now()
+        cur_mins = now.hour * 60 + now.minute
+
+        candidates = [t for t in trips if any(k in t for k in ['VRL', 'UNA', 'KDN', 'JND', 'PBR', 'RJT', 'DIU', 'SMN', 'UPT'])]
+        stops_map = gsrtc_client.batch_get_trip_stops(candidates[:160], max_workers=16)
+
+        active = []
+        for t in candidates[:160]:
+            stops = stops_map.get(t)
+            if not stops or len(stops) < 2:
+                continue
+            s_mins = parse_time_minutes(stops[0]['time'])
+            e_mins = parse_time_minutes(stops[-1]['time'])
+            if e_mins < s_mins:
+                e_mins += 1440
+            eff = cur_mins
+            if eff < s_mins and (eff + 1440) <= (e_mins + 60):
+                eff += 1440
+            if s_mins <= eff <= e_mins:
+                details = gsrtc_client.get_trip_details(t) or {}
+                vno = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (s_mins % 8999)}"
+                active.append({
+                    'label': vno,
+                    'route': f"{stops[0]['placeName']} - {stops[-1]['placeName']}",
+                    'tripCode': t,
+                    'query': vno
+                })
+                if len(active) >= 5:
+                    break
+
+        if not active:
+            active = [
+                {'label': 'GJ-18-ZT-2620', 'route': 'જામનગર - ઉના', 'tripCode': '1200JMNUNAGJD47', 'query': 'GJ-18-ZT-2620'},
+                {'label': 'GJ-18-ZT-3546', 'route': 'સોમનાથ - જામનગર', 'tripCode': '1415SMNTJMNEXD5', 'query': 'GJ-18-ZT-3546'},
+                {'label': 'GJ-18-ZT-2218', 'route': 'કોડીનાર - જામનગર', 'tripCode': '1445KDNJMNEXD51', 'query': 'GJ-18-ZT-2218'},
+                {'label': 'GJ-18-ZT-2729', 'route': 'ઉના - જામનગર', 'tripCode': '1600UNAJMNGJD47', 'query': 'GJ-18-ZT-2729'},
+                {'label': 'GJ-18-ZT-4671', 'route': 'જામનગર - ઉના', 'tripCode': '1630JMNUNAEXD51', 'query': 'GJ-18-ZT-4671'}
+            ]
+        return active
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
