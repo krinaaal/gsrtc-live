@@ -18,6 +18,12 @@ const STATIONS = [
   { id: 'MHV', nameGu: 'મહુવા (એસ.ટી. ડેપો)', nameEn: 'Mahuva Depot', lat: 21.0910, lng: 71.7630, code: 'MHV' },
   { id: 'JFR', nameGu: 'જાફરાબાદ (બસ સ્ટેશન)', nameEn: 'Jafrabad', lat: 20.8660, lng: 71.3660, code: 'JFR' },
   { id: 'KSD', nameGu: 'કેશોદ (બસ સ્ટેશન)', nameEn: 'Keshod', lat: 21.3039, lng: 70.2520, code: 'KSD' },
+  { id: 'GDU', nameGu: 'ગડુ શેરબાગ (બસ સ્ટેન્ડ)', nameEn: 'Gadu Sherbag', lat: 21.0535, lng: 70.2897, code: 'GDU' },
+  { id: 'GDDR', nameGu: 'માળીયા હાટીના (બસ સ્ટેન્ડ)', nameEn: 'Maliya Hatina', lat: 21.1596, lng: 70.2995, code: 'GDDR' },
+  { id: 'CHRVD', nameGu: 'ચોરવાડ (બસ સ્ટેન્ડ)', nameEn: 'Chorvad', lat: 20.9980, lng: 70.2350, code: 'CHRVD' },
+  { id: 'VNTL', nameGu: 'વંથલી (બસ સ્ટેન્ડ)', nameEn: 'Vanthali', lat: 21.4680, lng: 70.3340, code: 'VNTL' },
+  { id: 'DLS', nameGu: 'ડોળાસા (બસ સ્ટેન્ડ)', nameEn: 'Dolasa', lat: 20.8050, lng: 70.8350, code: 'DLS' },
+  { id: 'KSRY', nameGu: 'કેસરીયા (ઉના)', nameEn: 'Kesariya', lat: 20.8120, lng: 70.9350, code: 'KSRY' },
   { id: 'MNG', nameGu: 'માંગરોળ (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Mangrol', lat: 21.1215, lng: 70.1170, code: 'MNG' },
   { id: 'UPL', nameGu: 'ઉપલેટા (એસ.ટી. બસ સ્ટેશન)', nameEn: 'Upleta Bus Stand', lat: 21.7340, lng: 70.2800, code: 'UPL' },
   { id: 'DHJ', nameGu: 'ધોરાજી (બસ સ્ટેશન)', nameEn: 'Dhoraji', lat: 21.7330, lng: 70.4500, code: 'DHJ' },
@@ -100,9 +106,40 @@ const HIGHWAY_ROAD_SECTORS = {
     [21.5222, 70.4579], [21.4800, 70.4200], [21.4300, 70.3700], [21.3700, 70.3100],
     [21.3039, 70.2520]
   ],
+  'KSD-GDDR': [
+    [21.3039, 70.2520], [21.2925, 70.2514], [21.2650, 70.2574], [21.2500, 70.2589],
+    [21.2298, 70.2595], [21.2044, 70.2631], [21.1814, 70.2655], [21.1641, 70.2692],
+    [21.1506, 70.2718], [21.1565, 70.2902], [21.1596, 70.2995]
+  ],
+  'GDDR-GDU': [
+    [21.1596, 70.2995], [21.1547, 70.2863], [21.1492, 70.2743], [21.1381, 70.2742],
+    [21.1220, 70.2771], [21.1077, 70.2793], [21.0964, 70.2856], [21.0836, 70.2903],
+    [21.0631, 70.2903], [21.0535, 70.2897]
+  ],
+  'GDU-VRL': [
+    [21.0535, 70.2897], [21.0427, 70.2871], [21.0326, 70.2909], [21.0212, 70.2923],
+    [21.0116, 70.2989], [20.9960, 70.3097], [20.9866, 70.3155], [20.9711, 70.3282],
+    [20.9613, 70.3345], [20.9473, 70.3414], [20.9382, 70.3495], [20.9314, 70.3524],
+    [20.9218, 70.3565], [20.9143, 70.3611], [20.9040, 70.3652], [20.9010, 70.3629]
+  ],
+  'KSD-GDU': [
+    [21.3039, 70.2520], [21.2500, 70.2589], [21.2044, 70.2631], [21.1506, 70.2718],
+    [21.1077, 70.2793], [21.0836, 70.2903], [21.0535, 70.2897]
+  ],
   'KSD-VRL': [
-    [21.3039, 70.2520], [21.2400, 70.2700], [21.1600, 70.3000], [21.0800, 70.3300],
-    [20.9800, 70.3550], [20.9010, 70.3629]
+    [21.3039, 70.2520], [21.2650, 70.2574], [21.2298, 70.2595], [21.2044, 70.2631],
+    [21.1641, 70.2692], [21.1506, 70.2718], [21.1077, 70.2793], [21.0836, 70.2903],
+    [21.0535, 70.2897], [21.0212, 70.2923], [20.9960, 70.3097], [20.9711, 70.3282],
+    [20.9473, 70.3414], [20.9218, 70.3565], [20.9010, 70.3629]
+  ],
+  'KDN-DLS': [
+    [20.7936, 70.7027], [20.7980, 70.7400], [20.8010, 70.7800], [20.8050, 70.8350]
+  ],
+  'DLS-KSRY': [
+    [20.8050, 70.8350], [20.8080, 70.8800], [20.8120, 70.9350]
+  ],
+  'KSRY-UNA': [
+    [20.8120, 70.9350], [20.8180, 70.9800], [20.8242, 71.0392]
   ],
   'UPL-DHJ': [
     [21.7340, 70.2800], [21.7335, 70.3500], [21.7330, 70.4500]
@@ -827,16 +864,64 @@ function createRealisticBusIcon(busNo, bearing, speed) {
   });
 }
 
+function normalizePlaceKey(p) {
+  if (!p) return '';
+  const code = (p.placeCode || '').toUpperCase().trim();
+  const name = (p.placeName || '').toUpperCase().trim();
+
+  if (code === 'GDU' || name.includes('GADU')) return 'GDU';
+  if (code === 'GDDR' || name.includes('MALIYA') || name.includes('GADODAR')) return 'GDDR';
+  if (code === 'KSD' || name.includes('KESHOD')) return 'KSD';
+  if (code === 'VRL' || name.includes('VERAVAL')) return 'VRL';
+  if (code === 'SMN' || code === 'SMNT' || name.includes('SOMNATH')) return 'SMN';
+  if (code === 'PRC' || code === 'PRCH' || name.includes('PRAC') || name.includes('PRAN')) return 'PRC';
+  if (code === 'KDN' || name.includes('KODINAR')) return 'KDN';
+  if (code === 'DLS' || name.includes('DOLASA')) return 'DLS';
+  if (code === 'KSRY' || name.includes('KESARIYA')) return 'KSRY';
+  if (code === 'UNA' || name.includes('UNA')) return 'UNA';
+  if (code === 'DIU' || name.includes('DIU')) return 'DIU';
+  if (code === 'UPL' || code === 'UPT' || name.includes('UPLETA')) return 'UPL';
+  if (code === 'DHJ' || code === 'DRJ' || name.includes('DHORAJI')) return 'DHJ';
+  if (code === 'SPD' || name.includes('SUPEDI')) return 'SPD';
+  if (code === 'JND' || name.includes('JUNAGADH')) return 'JND';
+  if (code === 'VNTL' || name.includes('VANTHALI')) return 'VNTL';
+  if (code === 'PBR' || name.includes('PORBANDAR')) return 'PBR';
+  if (code === 'MNG' || code === 'MGL' || name.includes('MANGROL')) return 'MNG';
+  if (code === 'CHRVD' || name.includes('CHORVAD')) return 'CHRVD';
+  if (code === 'RJL' || name.includes('RAJULA')) return 'RJL';
+  if (code === 'MHV' || name.includes('MAHUVA')) return 'MHV';
+  if (code === 'BVN' || name.includes('BHAVNAGAR')) return 'BVN';
+  if (code === 'RJT' || name.includes('RAJKOT')) return 'RJT';
+  if (code === 'GDL' || name.includes('GONDAL')) return 'GDL';
+  if (code === 'ADI' || code === 'GTM' || name.includes('AHMEDABAD')) return 'ADI';
+
+  return code || name;
+}
+
 // Fetch or generate highway coordinates for a segment between two stops
 async function getRoadSegmentCoords(p1, p2) {
+  const norm1 = normalizePlaceKey(p1);
+  const norm2 = normalizePlaceKey(p2);
   const s1 = (p1.placeCode || p1.placeName || '').toUpperCase().trim();
   const s2 = (p2.placeCode || p2.placeName || '').toUpperCase().trim();
+
+  const keyNorm1 = `${norm1}-${norm2}`;
+  const keyNorm2 = `${norm2}-${norm1}`;
   const key1 = `${s1}-${s2}`;
   const key2 = `${s2}-${s1}`;
   const cacheKey = `${p1.lat},${p1.lng}_${p2.lat},${p2.lng}`;
 
   if (roadCache[cacheKey]) return roadCache[cacheKey];
 
+  if (HIGHWAY_ROAD_SECTORS[keyNorm1]) {
+    roadCache[cacheKey] = HIGHWAY_ROAD_SECTORS[keyNorm1];
+    return HIGHWAY_ROAD_SECTORS[keyNorm1];
+  }
+  if (HIGHWAY_ROAD_SECTORS[keyNorm2]) {
+    const rev = [...HIGHWAY_ROAD_SECTORS[keyNorm2]].reverse();
+    roadCache[cacheKey] = rev;
+    return rev;
+  }
   if (HIGHWAY_ROAD_SECTORS[key1]) {
     roadCache[cacheKey] = HIGHWAY_ROAD_SECTORS[key1];
     return HIGHWAY_ROAD_SECTORS[key1];
