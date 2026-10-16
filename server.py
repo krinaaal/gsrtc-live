@@ -8,6 +8,8 @@ Connects directly to official GSRTC WebServices (gsrtc.in) backend
 import http.server
 import socketserver
 import urllib.parse
+import urllib.request
+import ssl
 import json
 import os
 import sys
@@ -309,6 +311,86 @@ def get_station_coords(pcode, pname):
                 return st['lat'], st['lng']
 
     return 20.90 + (hash(pname_u) % 400) * 0.001, 70.36 + (hash(pcode_u) % 400) * 0.001
+
+def get_trip_road_coordinates(trip_code, route_points):
+    """Retrieves high-density on-road physical highway coordinates for a trip."""
+    # 1. Check disk cache first
+    routes_dir = os.path.join(os.path.dirname(__file__), 'cache', 'routes')
+    if trip_code:
+        fpath = os.path.join(routes_dir, f"{trip_code}.json")
+        if os.path.exists(fpath):
+            try:
+                with open(fpath, 'r', encoding='utf-8') as f:
+                    coords = json.load(f)
+                    if coords and len(coords) > 10:
+                        return coords
+            except Exception as e:
+                print(f"[Routes] Error reading cached route {fpath}: {e}")
+
+    # 2. Try fetching from OSRM router if route_points has >= 2 stops
+    if route_points and len(route_points) >= 2:
+        try:
+            pts = route_points
+            if len(pts) > 25:
+                step = len(pts) / 20.0
+                sub_pts = [pts[0]]
+                for k in range(1, 20):
+                    idx = int(k * step)
+                    if idx < len(pts) - 1:
+                        sub_pts.append(pts[idx])
+                sub_pts.append(pts[-1])
+                pts = sub_pts
+
+            coord_str = ';'.join(f"{p['lng']:.5f},{p['lat']:.5f}" for p in pts)
+            url = f"http://router.project-osrm.org/route/v1/driving/{coord_str}?overview=full&geometries=geojson"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 GSRTC/2.0'})
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            with urllib.request.urlopen(req, context=ctx, timeout=4) as resp:
+                data = json.loads(resp.read().decode())
+                if data.get('code') == 'Ok' and data.get('routes'):
+                    raw_coords = data['routes'][0]['geometry']['coordinates']
+                    road_coords = [[round(c[1], 5), round(c[0], 5)] for c in raw_coords]
+                    if len(road_coords) > 10:
+                        os.makedirs(routes_dir, exist_ok=True)
+                        if trip_code:
+                            with open(fpath, 'w', encoding='utf-8') as f:
+                                json.dump(road_coords, f)
+                        return road_coords
+        except Exception as e:
+            print(f"[OSRM] Route generation fallback: {e}")
+
+    # 3. Assemble from HIGHWAY_ROADS_DATA sector database
+    assembled = []
+    for i in range(len(route_points) - 1):
+        p1 = route_points[i]
+        p2 = route_points[i + 1]
+        c1 = (p1.get('placeCode') or p1.get('placeName') or '').upper().strip()
+        c2 = (p2.get('placeCode') or p2.get('placeName') or '').upper().strip()
+
+        k1 = f"{c1}-{c2}"
+        k2 = f"{c2}-{c1}"
+        seg = None
+        if k1 in HIGHWAY_ROADS_DATA:
+            seg = HIGHWAY_ROADS_DATA[k1]
+        elif k2 in HIGHWAY_ROADS_DATA:
+            seg = list(reversed(HIGHWAY_ROADS_DATA[k2]))
+
+        if seg and len(seg) >= 2:
+            if not assembled:
+                assembled.extend(seg)
+            else:
+                assembled.extend(seg[1:])
+        else:
+            if not assembled:
+                assembled.append([p1['lat'], p1['lng']])
+            assembled.append([p2['lat'], p2['lng']])
+
+    if assembled and len(assembled) > 1:
+        return assembled
+
+    return [[p['lat'], p['lng']] for p in route_points]
 
 class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -686,6 +768,9 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                         p_n['time'] = f"{h2:02d}:{m2:02d}"
 
         route_points = enriched_points
+        road_coords = get_trip_road_coordinates(trip_code, route_points)
+        if not road_coords or len(road_coords) < 2:
+            road_coords = [[p['lat'], p['lng']] for p in route_points]
 
         start_mins = route_points[0]['mins']
         end_mins = route_points[-1]['mins']
@@ -718,8 +803,11 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             ratio = 0.0
             p1 = route_points[0]
             p2 = route_points[min(1, len(route_points) - 1)]
-            cur_lat, cur_lng = p1['lat'], p1['lng']
-            heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            cur_lat, cur_lng = road_coords[0][0], road_coords[0][1]
+            if len(road_coords) > 1:
+                heading = calculate_bearing(road_coords[0][0], road_coords[0][1], road_coords[1][0], road_coords[1][1])
+            else:
+                heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
             speed = 0.0
             diff = start_mins - prog_mins
             if diff <= 15:
@@ -736,8 +824,11 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             overall_progress = 1.0
             p1 = route_points[-2]
             p2 = route_points[-1]
-            cur_lat, cur_lng = p2['lat'], p2['lng']
-            heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            cur_lat, cur_lng = road_coords[-1][0], road_coords[-1][1]
+            if len(road_coords) > 1:
+                heading = calculate_bearing(road_coords[-2][0], road_coords[-2][1], road_coords[-1][0], road_coords[-1][1])
+            else:
+                heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
             speed = 0.0
             status_str = f"સફર પૂર્ણ થઈ ગઈ છે ({p2['placeName']} સ્ટેન્ડ પર પહોંચી ગઈ)"
         else:
@@ -757,18 +848,25 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 ratio = 0.5
 
-            cur_lat = p1['lat'] + (p2['lat'] - p1['lat']) * ratio
-            cur_lng = p1['lng'] + (p2['lng'] - p1['lng']) * ratio
-            heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            # Snap strictly onto physical road coordinates
+            overall_progress = round(max(0.05, min(0.98, (cur_seg_idx + ratio) / float(total_segs))), 4)
+            road_idx = int(overall_progress * (len(road_coords) - 1))
+            road_idx = max(0, min(len(road_coords) - 1, road_idx))
+            cur_lat = road_coords[road_idx][0]
+            cur_lng = road_coords[road_idx][1]
+
+            next_idx = min(road_idx + 1, len(road_coords) - 1)
+            if next_idx == road_idx and road_idx > 0:
+                heading = calculate_bearing(road_coords[road_idx - 1][0], road_coords[road_idx - 1][1], road_coords[road_idx][0], road_coords[road_idx][1])
+            else:
+                heading = calculate_bearing(road_coords[road_idx][0], road_coords[road_idx][1], road_coords[next_idx][0], road_coords[next_idx][1])
+
             speed = round(45.0 + 5.0 * math.sin(now.second * 0.15 + cur_seg_idx), 1)
 
             if operational_delay > 0:
                 status_str = f"ઓન રોડ ({int(speed)} કિમી/કલાક) - {p1['placeName']} થી {p2['placeName']} તરફ (ટ્રાફિક વિલંબ ~{operational_delay} મિ.)"
             else:
                 status_str = f"ઓન રોડ ({int(speed)} કિમી/કલાક) - {p1['placeName']} થી {p2['placeName']} તરફ"
-
-            # True overall route progress across all stops
-            overall_progress = round(max(0.05, min(0.98, (cur_seg_idx + ratio) / float(total_segs))), 3)
 
         veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (route_points[0]['mins'] % 8999)}"
 
@@ -785,6 +883,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             'progressRatio': overall_progress,
             'overallProgress': overall_progress,
             'status': status_str,
+            'roadCoordinates': road_coords,
             'currentLocation': {
                 'lat': round(cur_lat, 5),
                 'lng': round(cur_lng, 5),
@@ -874,14 +973,20 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         return {'success': True, 'data': track_data}
 
+    _active_vehicles_cache = {'time': 0, 'data': []}
+
     def get_active_vehicles(self):
         """Returns sample active live vehicles driving on road right now for 1-click test chips."""
+        t_now = time.time()
+        if t_now - GSRTCRequestHandler._active_vehicles_cache['time'] < 300 and GSRTCRequestHandler._active_vehicles_cache['data']:
+            return GSRTCRequestHandler._active_vehicles_cache['data']
+
         trips = gsrtc_client.get_live_trips()
         now = get_ist_now()
         cur_mins = now.hour * 60 + now.minute
 
         candidates = [t for t in trips if any(k in t for k in ['VRL', 'UNA', 'KDN', 'JND', 'PBR', 'RJT', 'DIU', 'SMN', 'UPT'])]
-        stops_map = gsrtc_client.batch_get_trip_stops(candidates[:160], max_workers=16)
+        stops_map = gsrtc_client.batch_get_trip_stops(candidates[:60], max_workers=12)
 
         active = []
         for t in candidates[:160]:
@@ -915,6 +1020,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 {'label': 'GJ-18-ZT-2729', 'route': 'ઉના - જામનગર', 'tripCode': '1600UNAJMNGJD47', 'query': 'GJ-18-ZT-2729'},
                 {'label': 'GJ-18-ZT-4671', 'route': 'જામનગર - ઉના', 'tripCode': '1630JMNUNAEXD51', 'query': 'GJ-18-ZT-4671'}
             ]
+        GSRTCRequestHandler._active_vehicles_cache = {'time': t_now, 'data': active}
         return active
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):

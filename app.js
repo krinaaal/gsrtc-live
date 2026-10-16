@@ -957,7 +957,7 @@ function initStationsMapIfNeeded() {
   }
 }
 
-// Realistic 3D GSRTC Bus Marker HTML
+// Realistic 3D GSRTC Bus Marker HTML (Zero-offset anchor: strictly centered at [20, 20])
 function createRealisticBusIcon(busNo, bearing, speed) {
   const roundedBearing = Math.round(bearing || 0);
   const roundedSpeed = Math.round(speed || 0);
@@ -965,16 +965,16 @@ function createRealisticBusIcon(busNo, bearing, speed) {
   return L.divIcon({
     className: 'custom-bus-container',
     html: `
-      <div class="relative flex flex-col items-center pointer-events-auto">
-        <!-- Floating Live Speed & Bus Number Pill -->
-        <div class="bg-slate-900/90 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap shadow-lg border border-rose-500 mb-1 flex items-center gap-1 transform -translate-y-1">
+      <div style="position: relative; width: 40px; height: 40px; pointer-events: auto;">
+        <!-- Floating Live Speed & Bus Number Pill (Hovering directly above the bus without displacing center anchor) -->
+        <div style="position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); pointer-events: none;" class="bg-slate-900/95 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap shadow-lg border border-rose-500 flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full ${roundedSpeed > 0 ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}"></span>
           <span>${busNo}</span>
           <span class="text-rose-400 font-mono">${roundedSpeed} km/h</span>
         </div>
 
-        <!-- 3D Rotating Bus with Headlight Beam -->
-        <div class="relative" style="transform: rotate(${roundedBearing}deg); transition: transform 0.6s ease-out;">
+        <!-- 3D Rotating Bus with Headlight Beam (Center strictly at 20px, 20px) -->
+        <div style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; transform: rotate(${roundedBearing}deg); transform-origin: 20px 20px; transition: transform 0.6s ease-out;">
           ${roundedSpeed > 0 ? '<div class="headlight-beam"></div>' : ''}
           <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-700 via-rose-600 to-rose-500 shadow-2xl flex items-center justify-center border-2 border-white transform hover:scale-110 transition-transform">
             <img src="./icons/bus-marker.png" alt="Bus" class="w-6 h-6 object-contain" />
@@ -982,8 +982,8 @@ function createRealisticBusIcon(busNo, bearing, speed) {
         </div>
       </div>
     `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22]
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
   });
 }
 
@@ -1239,7 +1239,11 @@ async function renderTrackingView(trackData, isSilent = false) {
     stopMarkers = [];
 
     // Build Highway Road Polyline on Google Maps
-    activeRoadCoordinates = generateOnRoadCoordinates(points);
+    if (trackData.roadCoordinates && trackData.roadCoordinates.length > 1) {
+      activeRoadCoordinates = trackData.roadCoordinates;
+    } else {
+      activeRoadCoordinates = generateOnRoadCoordinates(points);
+    }
 
     routeLine = L.polyline(activeRoadCoordinates, {
       color: '#be123c',
@@ -1264,8 +1268,10 @@ async function renderTrackingView(trackData, isSilent = false) {
       stopMarkers.push(m);
     });
 
-    // Compute exact on-road position
-    const roadPos = getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
+    // Compute exact on-road position (strictly pinned to physical highway road)
+    const roadPos = (loc && loc.lat)
+      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
+      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
     currentBusLocation = roadPos;
 
     // Create 3D Animated Bus Marker
@@ -1289,7 +1295,9 @@ async function renderTrackingView(trackData, isSilent = false) {
     const effectiveZoom = (trackMapUserZoom !== null) ? trackMapUserZoom : trackMapInstance.getZoom();
 
     // Compute exact on-road position along physical road geometry
-    const roadPos = getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
+    const roadPos = (loc && loc.lat)
+      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
+      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
     currentBusLocation = roadPos;
 
     if (busMarker) {
@@ -1756,12 +1764,16 @@ function renderPnrTrackingView(trackData, isSilent = false) {
     pnrStopMarkers = [];
 
     pnrActiveRouteSegments = [];
-    const fullRoad = [];
-    for (let i = 0; i < points.length - 1; i++) {
-      const seg = getRoadSegmentCoords(points[i], points[i + 1]);
-      pnrActiveRouteSegments.push(seg);
-      if (i === 0) fullRoad.push(...seg);
-      else fullRoad.push(...seg.slice(1));
+    let fullRoad = [];
+    if (trackData.roadCoordinates && trackData.roadCoordinates.length > 1) {
+      fullRoad = trackData.roadCoordinates;
+    } else {
+      for (let i = 0; i < points.length - 1; i++) {
+        const seg = getRoadSegmentCoords(points[i], points[i + 1]);
+        pnrActiveRouteSegments.push(seg);
+        if (i === 0) fullRoad.push(...seg);
+        else fullRoad.push(...seg.slice(1));
+      }
     }
 
     pnrRouteLine = L.polyline(fullRoad, {
@@ -1786,7 +1798,9 @@ function renderPnrTrackingView(trackData, isSilent = false) {
       pnrStopMarkers.push(m);
     });
 
-    const roadPos = getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points, pnrActiveRouteSegments);
+    const roadPos = (loc && loc.lat)
+      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
+      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points, pnrActiveRouteSegments);
     pnrCurrentBusLocation = roadPos;
 
     pnrBusMarker = L.marker([roadPos.lat, roadPos.lng], {
@@ -1802,7 +1816,9 @@ function renderPnrTrackingView(trackData, isSilent = false) {
     isInitialPnrTripTrack = false;
   } else {
     const effectiveZoom = (pnrMapUserZoom !== null) ? pnrMapUserZoom : pnrMapInstance.getZoom();
-    const roadPos = getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points, pnrActiveRouteSegments);
+    const roadPos = (loc && loc.lat)
+      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
+      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points, pnrActiveRouteSegments);
     pnrCurrentBusLocation = roadPos;
 
     if (pnrBusMarker) {

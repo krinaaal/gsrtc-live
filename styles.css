@@ -241,3 +241,8 @@ input, textarea, select {
   filter: drop-shadow(0 2px 8px rgba(225, 29, 72, 0.4));
 }
 
+/* Custom Bus Marker Container: Zero-offset anchor with visible overflow */
+.custom-bus-container {
+  overflow: visible !important;
+}
+
