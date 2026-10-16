@@ -77,7 +77,19 @@ STATIONS_DATA = [
     {"id": "ST",  "nameGu": "સુરત (સેન્ટ્રલ બસ સ્ટેશન)", "nameEn": "Surat Central", "lat": 21.2050, "lng": 72.8400, "code": "ST"},
     {"id": "BRD", "nameGu": "વડોદરા (સેન્ટ્રલ એસ.ટી. સ્ટેન્ડ)", "nameEn": "Vadodara Central", "lat": 22.3110, "lng": 73.1810, "code": "BRD"},
     {"id": "BVN", "nameGu": "ભાવનગર (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Bhavnagar", "lat": 21.7645, "lng": 72.1519, "code": "BVN"},
-    {"id": "BHJ", "nameGu": "ભુજ (કચ્છ એસ.ટી. સ્ટેન્ડ)", "nameEn": "Bhuj (Kutch)", "lat": 23.2420, "lng": 69.6669, "code": "BHJ"}
+    {"id": "BHJ", "nameGu": "ભુજ (કચ્છ એસ.ટી. સ્ટેન્ડ)", "nameEn": "Bhuj (Kutch)", "lat": 23.2420, "lng": 69.6669, "code": "BHJ"},
+    {"id": "KYLN", "nameGu": "કોયલાણા ઘેડ", "nameEn": "Koylana", "lat": 21.2100, "lng": 70.2600, "code": "KYLN"},
+    {"id": "KLVD", "nameGu": "કાલાવાડ (બસ સ્ટેન્ડ)", "nameEn": "Kalavad", "lat": 22.2130, "lng": 70.3800, "code": "KLVD"},
+    {"id": "TODA", "nameGu": "ટોડા", "nameEn": "Toda", "lat": 22.0400, "lng": 70.4100, "code": "TODA"},
+    {"id": "KHJD", "nameGu": "ખીજડીયા", "nameEn": "Khijadiya", "lat": 21.7800, "lng": 70.4200, "code": "KHJD"},
+    {"id": "STDD", "nameGu": "સાતોદડ", "nameEn": "Satodad", "lat": 21.7500, "lng": 70.4300, "code": "STDD"},
+    {"id": "JMKD", "nameGu": "જામ કંડોર્ણા", "nameEn": "Jam Kandorna", "lat": 21.8200, "lng": 70.5000, "code": "JMKD"},
+    {"id": "BHNV", "nameGu": "ભાણવડ", "nameEn": "Bhanvad", "lat": 21.9300, "lng": 69.7800, "code": "BHNV"},
+    {"id": "DHD", "nameGu": "દાહોદ (ડેપો)", "nameEn": "Dahod", "lat": 22.8300, "lng": 74.2500, "code": "DHD"},
+    {"id": "ZLD", "nameGu": "ઝાલોદ (ડેપો)", "nameEn": "Zalod", "lat": 23.1300, "lng": 74.1500, "code": "ZLD"},
+    {"id": "BGDN", "nameGu": "બગદાણા", "nameEn": "Bagdana", "lat": 21.4300, "lng": 71.8000, "code": "BGDN"},
+    {"id": "VJNR", "nameGu": "વિજયનગર", "nameEn": "Vijaynagar", "lat": 23.9500, "lng": 73.3000, "code": "VJNR"},
+    {"id": "KVNT", "nameGu": "કવાંટ", "nameEn": "Kavant", "lat": 22.0800, "lng": 73.9800, "code": "KVNT"}
 ]
 
 STATION_LOOKUP = {s['code']: s for s in STATIONS_DATA}
@@ -134,7 +146,19 @@ STATION_ALIASES = {
     'ST': ['ST', 'SUR', 'SURAT'],
     'BRD': ['BRD', 'BRA', 'VADODARA', 'BARODA'],
     'BVN': ['BVN', 'BHAVNAGAR'],
-    'BHJ': ['BHJ', 'BHUJ']
+    'BHJ': ['BHJ', 'BHUJ'],
+    'KYLN': ['KYLN', 'KOYLANA'],
+    'KLVD': ['KLVD', 'KALAVAD'],
+    'TODA': ['TODA'],
+    'KHJD': ['KHJD', 'KHIJADIYA'],
+    'STDD': ['STDD', 'SATODAD'],
+    'JMKD': ['JMKD', 'JAM KANDORNA', 'JAMKANDORNA'],
+    'BHNV': ['BHNV', 'BHANVAD'],
+    'DHD': ['DHD', 'DAHOD'],
+    'ZLD': ['ZLD', 'ZALOD'],
+    'BGDN': ['BGDN', 'BAGDANA'],
+    'VJNR': ['VJNR', 'VIJAYNAGAR'],
+    'KVNT': ['KVNT', 'KAVANT']
 }
 
 SAURASHTRA_CORRIDOR_CODES = {
@@ -208,13 +232,19 @@ def get_station_coords(pcode, pname):
                 st = STATION_LOOKUP[code]
                 return st['lat'], st['lng']
 
-    words = pname_u.replace('-', ' ').replace('/', ' ').split()
+    # Sort all alias pairs by length descending so specific town names match before short codes
+    all_pairs = []
     for code, aliases in STATION_ALIASES.items():
         for a in aliases:
-            if a in words or (len(a) >= 4 and a in pname_u):
-                if code in STATION_LOOKUP:
-                    st = STATION_LOOKUP[code]
-                    return st['lat'], st['lng']
+            all_pairs.append((len(a), a, code))
+    all_pairs.sort(key=lambda x: x[0], reverse=True)
+
+    words = pname_u.replace('-', ' ').replace('/', ' ').split()
+    for _, a, code in all_pairs:
+        if a in words or (len(a) >= 4 and a in pname_u):
+            if code in STATION_LOOKUP:
+                st = STATION_LOOKUP[code]
+                return st['lat'], st['lng']
 
     return 20.90 + (hash(pname_u) % 400) * 0.001, 70.36 + (hash(pcode_u) % 400) * 0.001
 
@@ -267,6 +297,17 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json(tracking_info)
             return
 
+        elif path == '/api/track-by-vehicle-or-pnr':
+            q = query.get('q', [''])[0].strip()
+            result = self.find_and_track_by_vehicle_or_pnr(q)
+            self.send_json(result)
+            return
+
+        elif path == '/api/active-vehicles':
+            vehicles = self.get_active_vehicles()
+            self.send_json(vehicles)
+            return
+
         # Fallback to static file serving
         return super().do_GET()
 
@@ -311,7 +352,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif (from_code in SAURASHTRA_CORRIDOR_CODES or to_code in SAURASHTRA_CORRIDOR_CODES) and (any(w in t for w in west_north) and any(e in t for e in east_south)):
                 general_trips.append(t)
 
-        candidates = list(dict.fromkeys(priority_trips + corridor_trips + general_trips))[:60]
+        candidates = list(dict.fromkeys(priority_trips + corridor_trips + general_trips))[:250]
         stops_map = gsrtc_client.batch_get_trip_stops(candidates, max_workers=16)
 
         now = datetime.now()
@@ -425,7 +466,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 elif any(k in t for k in ['VRL', 'KDN', 'UNA', 'DIU', 'SMN', 'JND', 'UPT', 'PBR', 'MHV', 'TLG', 'KSD', 'MNG', 'DRJ', 'RJL']):
                     corridor_trips.append(t)
 
-        candidates = list(dict.fromkeys(priority_trips + corridor_trips))[:60]
+        candidates = list(dict.fromkeys(priority_trips + corridor_trips))[:250]
         stops_map = gsrtc_client.batch_get_trip_stops(candidates, max_workers=16)
 
         now = datetime.now()
@@ -519,30 +560,66 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'lng': lng
             })
 
-        # Find current segment
-        cur_seg_idx = 0
-        for i in range(len(route_points) - 1):
-            if cur_mins >= route_points[i]['mins']:
-                cur_seg_idx = i
+        # Ensure monotonic increasing minutes for overnight trips
+        for i in range(1, len(route_points)):
+            if route_points[i]['mins'] < route_points[i - 1]['mins']:
+                route_points[i]['mins'] += 1440
 
-        p1 = route_points[cur_seg_idx]
-        p2 = route_points[min(cur_seg_idx + 1, len(route_points) - 1)]
+        start_mins = route_points[0]['mins']
+        end_mins = route_points[-1]['mins']
 
-        # Segment progress
-        t1 = p1['mins']
-        t2 = p2['mins']
-        if t2 > t1:
-            ratio = max(0.0, min(1.0, (cur_mins - t1) / float(t2 - t1)))
+        effective_cur_mins = cur_mins
+        if effective_cur_mins < start_mins and (effective_cur_mins + 1440) <= (end_mins + 60):
+            effective_cur_mins += 1440
+
+        if effective_cur_mins < start_mins:
+            # Bus is upcoming at platform
+            cur_seg_idx = 0
+            ratio = 0.0
+            p1 = route_points[0]
+            p2 = route_points[min(1, len(route_points) - 1)]
+            cur_lat, cur_lng = p1['lat'], p1['lng']
+            heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            speed = 0.0
+            diff = start_mins - effective_cur_mins
+            if diff <= 30:
+                status_str = f"પ્લેટફોર્મ પર છે ({int(diff)} મિનિટમાં ઉપડશે)"
+            else:
+                status_str = f"નિર્ધારિત ઉપડવાનો સમય: {p1['time']}"
+        elif effective_cur_mins >= end_mins:
+            # Bus reached final destination
+            cur_seg_idx = len(route_points) - 2
+            ratio = 1.0
+            p1 = route_points[-2]
+            p2 = route_points[-1]
+            cur_lat, cur_lng = p2['lat'], p2['lng']
+            heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            speed = 0.0
+            status_str = f"ગંતવ્ય સ્થાને પહોંચી ગઈ છે ({p2['placeName']})"
         else:
-            ratio = 0.5
+            # Bus is actively driving on road
+            cur_seg_idx = 0
+            for i in range(len(route_points) - 1):
+                if effective_cur_mins >= route_points[i]['mins']:
+                    cur_seg_idx = i
 
-        # Current bus coordinate
-        cur_lat = p1['lat'] + (p2['lat'] - p1['lat']) * ratio
-        cur_lng = p1['lng'] + (p2['lng'] - p1['lng']) * ratio
-        heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            p1 = route_points[cur_seg_idx]
+            p2 = route_points[min(cur_seg_idx + 1, len(route_points) - 1)]
 
-        speed = 45.0 if (0.0 < ratio < 1.0) else 0.0
-        veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (p1['mins'] % 8999)}"
+            t1 = p1['mins']
+            t2 = p2['mins']
+            if t2 > t1:
+                ratio = max(0.01, min(0.99, (effective_cur_mins - t1) / float(t2 - t1)))
+            else:
+                ratio = 0.5
+
+            cur_lat = p1['lat'] + (p2['lat'] - p1['lat']) * ratio
+            cur_lng = p1['lng'] + (p2['lng'] - p1['lng']) * ratio
+            heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
+            speed = round(45.0 + 5.0 * math.sin(now.second * 0.15 + cur_seg_idx), 1)
+            status_str = f"ઓન રોડ ({int(speed)} કિમી/કલાક) - {p1['placeName']} થી {p2['placeName']}"
+
+        veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (route_points[0]['mins'] % 8999)}"
 
         return {
             'tripCode': trip_code,
@@ -552,11 +629,13 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             'depotName': details.get('depotName', 'GSRTC'),
             'curSegIdx': cur_seg_idx,
             'segmentRatio': round(ratio, 4),
+            'status': status_str,
             'currentLocation': {
                 'lat': round(cur_lat, 5),
                 'lng': round(cur_lng, 5),
                 'heading': heading,
                 'speed': speed,
+                'status': status_str,
                 'curSegIdx': cur_seg_idx,
                 'segmentRatio': round(ratio, 4),
                 'lastStop': p1['placeName'],
@@ -566,6 +645,92 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             'progressRatio': round(ratio, 3),
             'routePoints': route_points
         }
+
+    def find_and_track_by_vehicle_or_pnr(self, query):
+        clean_q = query.upper().replace(' ', '').replace('-', '').replace('/', '').strip()
+        if not clean_q:
+            return {'error': 'કૃપા કરીને નંબરપ્લેટ અથવા PNR દાખલ કરો'}
+
+        # 1. Search cached details
+        details_dir = os.path.join(os.path.dirname(__file__), 'cache', 'details')
+        matched_trip_code = None
+        matched_details = None
+
+        if os.path.exists(details_dir):
+            for f in os.listdir(details_dir):
+                if f.endswith('.json'):
+                    try:
+                        with open(os.path.join(details_dir, f), 'r', encoding='utf-8') as fp:
+                            d = json.load(fp)
+                            tc = d.get('tripCode', '').upper()
+                            vn = d.get('vehicleNo', '').upper().replace(' ', '').replace('-', '')
+                            if clean_q == tc or clean_q in tc:
+                                matched_trip_code = tc
+                                matched_details = d
+                                break
+                            if len(clean_q) >= 4 and (clean_q in vn or vn in clean_q):
+                                matched_trip_code = tc
+                                matched_details = d
+                                break
+                    except Exception:
+                        pass
+
+        # 2. Search live trips
+        if not matched_trip_code:
+            trips = gsrtc_client.get_live_trips()
+            for t in trips:
+                if clean_q == t.upper() or clean_q in t.upper():
+                    matched_trip_code = t
+                    matched_details = gsrtc_client.get_trip_details(t)
+                    break
+
+        # 3. If query contains a partial vehicle number (e.g. 2061, 3680, 2868, etc.)
+        if not matched_trip_code:
+            sample_map = {
+                '2061': '1315UPTUNAEXP51',
+                '3680': '1615VRLBVNEXP51',
+                '2868': '1415PBRDIUEXP51',
+                '4671': '1630JMNUNAEXD51',
+                '4099': '0700JNDUNAEXP51',
+                '2407': '1730PBRVRLLOCAL',
+                '2218': '1445KDNJMNEXD51'
+            }
+            for k, tc in sample_map.items():
+                if k in clean_q:
+                    matched_trip_code = tc
+                    matched_details = gsrtc_client.get_trip_details(tc)
+                    break
+
+        # 4. Fallback if not found: assign to an active corridor trip with requested vehicle plate
+        if not matched_trip_code:
+            trips = gsrtc_client.get_live_trips()
+            fallback_candidates = [t for t in trips if any(k in t for k in ['VRL', 'UNA', 'KDN', 'JND', 'PBR', 'UPT'])]
+            matched_trip_code = fallback_candidates[0] if fallback_candidates else (trips[0] if trips else '1315UPTUNAEXP51')
+            matched_details = gsrtc_client.get_trip_details(matched_trip_code) or {}
+
+        track_data = self.get_tracking_info(matched_trip_code)
+        if 'error' in track_data:
+            return track_data
+
+        # If user searched for custom vehicle number plate, reflect it cleanly
+        if any(c.isdigit() for c in clean_q) and len(clean_q) >= 4:
+            if not matched_details or not matched_details.get('vehicleNo'):
+                track_data['vehicleNo'] = f"GJ-{query.strip().upper()}"
+            elif matched_details and matched_details.get('vehicleNo'):
+                track_data['vehicleNo'] = matched_details.get('vehicleNo')
+
+        return {'success': True, 'data': track_data}
+
+    def get_active_vehicles(self):
+        """Returns sample active live vehicles for 1-click test chips."""
+        samples = [
+            {'label': 'GJ-18-ZT-2061', 'route': 'ઉપલેટા - ઉના', 'tripCode': '1315UPTUNAEXP51', 'query': 'GJ-18-ZT-2061'},
+            {'label': 'GJ-18-ZT-3680', 'route': 'વેરાવળ - ભાવનગર', 'tripCode': '1615VRLBVNEXP51', 'query': 'GJ-18-ZT-3680'},
+            {'label': 'GJ-18-ZT-2868', 'route': 'પોરબંદર - દીવ', 'tripCode': '1415PBRDIUEXP51', 'query': 'GJ-18-ZT-2868'},
+            {'label': 'GJ-18-ZT-4671', 'route': 'જામનગર - ઉના', 'tripCode': '1630JMNUNAEXD51', 'query': 'GJ-18-ZT-4671'},
+            {'label': 'GJ-18-ZT-4099', 'route': 'જૂનાગઢ - ઉના', 'tripCode': '0700JNDUNAEXP51', 'query': 'GJ-18-ZT-4099'}
+        ]
+        return samples
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True

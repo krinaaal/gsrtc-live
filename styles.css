@@ -168,3 +168,38 @@ body {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Splash Screen Animations */
+#splash-screen {
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.6s;
+}
+
+#splash-screen.splash-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@keyframes logoHeartbeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.06); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.1); }
+  70% { transform: scale(1); }
+}
+
+.logo-heartbeat {
+  animation: logoHeartbeat 1.8s infinite ease-in-out;
+}
+
+/* Shimmer Loader */
+.shimmer-loader {
+  background: linear-gradient(90deg, rgba(254, 205, 211, 0.2) 0%, rgba(254, 205, 211, 0.7) 50%, rgba(254, 205, 211, 0.2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

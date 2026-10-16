@@ -1,29 +1,45 @@
 {
+  "id": "mittal-gsrtc-live-app",
   "name": "Mittal💗 - GSRTC Live Tracker",
   "short_name": "Mittal💗",
   "description": "ક્રીનલ તરફથી પ્યારી મિત્તલ માટે સમર્પિત લાઈવ બસ ટ્રેકિંગ એપ્લિકેશન",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
-  "background_color": "#be123c",
+  "background_color": "#881337",
   "theme_color": "#be123c",
   "icons": [
     {
       "src": "icons/icon-72.png",
       "sizes": "72x72",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
