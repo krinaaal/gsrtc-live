@@ -59,35 +59,35 @@ if os.path.exists(HIGHWAY_ROADS_FILE):
 # Detailed Authentic Stations Database with GPS Coordinates
 STATIONS_DATA = [
     # Gir-Somnath & Coastal Belt
-    {"id": "VRL", "nameGu": "વેરાવળ (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Veraval Bus Station", "lat": 20.9010, "lng": 70.3629, "code": "VRL"},
-    {"id": "PRC", "nameGu": "પ્રાચી તીર્થ (બસ સ્ટેન્ડ)", "nameEn": "Prachi Tirtha", "lat": 20.9380, "lng": 70.6120, "code": "PRC"},
-    {"id": "KDN", "nameGu": "કોડીનાર (એસ.ટી. બસ ડેપો)", "nameEn": "Kodinar Depot", "lat": 20.7930, "lng": 70.7020, "code": "KDN"},
-    {"id": "UNA", "nameGu": "ઉના (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Una Bus Stand", "lat": 20.8240, "lng": 71.0380, "code": "UNA"},
-    {"id": "DIU", "nameGu": "દીવ (એસ.ટી. બસ સ્ટેન્ડ)", "nameEn": "Diu Bus Stand", "lat": 20.7144, "lng": 70.9874, "code": "DIU"},
-    {"id": "SMN", "nameGu": "સોમનાથ (યાત્રાધામ સ્ટેન્ડ)", "nameEn": "Somnath Temple Stand", "lat": 20.8880, "lng": 70.4010, "code": "SMN"},
+    {"id": "VRL", "nameGu": "વેરાવળ (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Veraval Bus Station", "lat": 20.9129, "lng": 70.3639, "code": "VRL"},
+    {"id": "PRC", "nameGu": "પ્રાચી તીર્થ (બસ સ્ટેન્ડ)", "nameEn": "Prachi Tirtha", "lat": 20.9238, "lng": 70.6135, "code": "PRC"},
+    {"id": "KDN", "nameGu": "કોડીનાર (એસ.ટી. બસ ડેપો)", "nameEn": "Kodinar Depot", "lat": 20.7946, "lng": 70.7032, "code": "KDN"},
+    {"id": "UNA", "nameGu": "ઉના (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Una Bus Stand", "lat": 20.8242, "lng": 71.0392, "code": "UNA"},
+    {"id": "DIU", "nameGu": "દીવ (એસ.ટી. બસ સ્ટેન્ડ)", "nameEn": "Diu Bus Stand", "lat": 20.7145, "lng": 70.9875, "code": "DIU"},
+    {"id": "SMN", "nameGu": "સોમનાથ (યાત્રાધામ સ્ટેન્ડ)", "nameEn": "Somnath Temple Stand", "lat": 20.8878, "lng": 70.4014, "code": "SMN"},
     {"id": "TLG", "nameGu": "તાલાલા ગીર (બસ સ્ટેન્ડ)", "nameEn": "Talala Gir", "lat": 21.0500, "lng": 70.5200, "code": "TLG"},
     {"id": "RJL", "nameGu": "રાજુલા (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Rajula", "lat": 20.9490, "lng": 71.4330, "code": "RJL"},
     {"id": "MHV", "nameGu": "મહુવા (એસ.ટી. ડેપો)", "nameEn": "Mahuva Depot", "lat": 21.0910, "lng": 71.7610, "code": "MHV"},
     {"id": "JFR", "nameGu": "જાફરાબાદ (બસ સ્ટેશન)", "nameEn": "Jafrabad", "lat": 20.8680, "lng": 71.3660, "code": "JFR"},
-    {"id": "DLS", "nameGu": "ડોળાસા (બસ સ્ટેન્ડ)", "nameEn": "Dolasa", "lat": 20.8050, "lng": 70.8350, "code": "DLS"},
-    {"id": "KSRY", "nameGu": "કેસરીયા (ઉના)", "nameEn": "Kesariya", "lat": 20.8120, "lng": 70.9350, "code": "KSRY"},
-    {"id": "GRKMD", "nameGu": "ગોરખ મઢી", "nameEn": "Gorakh Madhi", "lat": 20.9150, "lng": 70.5200, "code": "GRKMD"},
+    {"id": "DLS", "nameGu": "ડોળાસા (બસ સ્ટેન્ડ)", "nameEn": "Dolasa", "lat": 20.8068, "lng": 70.8351, "code": "DLS"},
+    {"id": "KSRY", "nameGu": "કેસરીયા (ઉના)", "nameEn": "Kesariya", "lat": 20.8082, "lng": 70.9398, "code": "KSRY"},
+    {"id": "GRKMD", "nameGu": "ગોરખ મઢી", "nameEn": "Gorakh Madhi", "lat": 20.9148, "lng": 70.5285, "code": "GRKMD"},
 
     # Junagadh, Porbandar & Saurashtra
-    {"id": "KSD", "nameGu": "કેશોદ (બસ સ્ટેશન)", "nameEn": "Keshod", "lat": 21.3020, "lng": 70.2470, "code": "KSD"},
-    {"id": "MNG", "nameGu": "માંગરોળ (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Mangrol", "lat": 21.1210, "lng": 70.1170, "code": "MNG"},
-    {"id": "CHRVD", "nameGu": "ચોરવાડ (બસ સ્ટેન્ડ)", "nameEn": "Chorvad", "lat": 20.9980, "lng": 70.2350, "code": "CHRVD"},
-    {"id": "MDVPR", "nameGu": "માધવપુર ઘેડ", "nameEn": "Madhavpur Ghed", "lat": 21.2550, "lng": 69.9550, "code": "MDVPR"},
-    {"id": "LOYEJ", "nameGu": "લોયેજ", "nameEn": "Loyej", "lat": 21.1950, "lng": 70.0200, "code": "LOYEJ"},
-    {"id": "GDU", "nameGu": "ગડુ શેરબાગ", "nameEn": "Gadu Sherbag", "lat": 21.0535, "lng": 70.2897, "code": "GDU"},
-    {"id": "GDDR", "nameGu": "માળીયા હાટીના", "nameEn": "Maliya Hatina", "lat": 21.1596, "lng": 70.2995, "code": "GDDR"},
-    {"id": "VNTL", "nameGu": "વંથલી (બસ સ્ટેન્ડ)", "nameEn": "Vanthali", "lat": 21.4680, "lng": 70.3340, "code": "VNTL"},
-    {"id": "JND", "nameGu": "જૂનાગઢ (બસ સ્ટેશન)", "nameEn": "Junagadh", "lat": 21.5222, "lng": 70.4579, "code": "JND"},
-    {"id": "DHJ", "nameGu": "ધોરાજી (બસ સ્ટેશન)", "nameEn": "Dhoraji", "lat": 21.7350, "lng": 70.4500, "code": "DHJ"},
-    {"id": "UPL", "nameGu": "ઉપલેટા (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Upleta Bus Stand", "lat": 21.7330, "lng": 70.2830, "code": "UPL"},
-    {"id": "SPD", "nameGu": "સુપેડી", "nameEn": "Supedi", "lat": 21.7580, "lng": 70.3550, "code": "SPD"},
+    {"id": "KSD", "nameGu": "કેશોદ (બસ સ્ટેશન)", "nameEn": "Keshod", "lat": 21.3025, "lng": 70.2480, "code": "KSD"},
+    {"id": "MNG", "nameGu": "માંગરોળ (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Mangrol", "lat": 21.1215, "lng": 70.1172, "code": "MNG"},
+    {"id": "CHRVD", "nameGu": "ચોરવાડ (બસ સ્ટેન્ડ)", "nameEn": "Chorvad", "lat": 20.9985, "lng": 70.2355, "code": "CHRVD"},
+    {"id": "MDVPR", "nameGu": "માધવપુર ઘેડ", "nameEn": "Madhavpur Ghed", "lat": 21.2545, "lng": 69.9548, "code": "MDVPR"},
+    {"id": "LOYEJ", "nameGu": "લોયેજ", "nameEn": "Loyej", "lat": 21.1948, "lng": 70.0210, "code": "LOYEJ"},
+    {"id": "GDU", "nameGu": "ગડુ શેરબાગ", "nameEn": "Gadu Sherbag", "lat": 21.0543, "lng": 70.2905, "code": "GDU"},
+    {"id": "GDDR", "nameGu": "માળીયા હાટીના", "nameEn": "Maliya Hatina", "lat": 21.1578, "lng": 70.3015, "code": "GDDR"},
+    {"id": "VNTL", "nameGu": "વંથલી (બસ સ્ટેન્ડ)", "nameEn": "Vanthali", "lat": 21.4682, "lng": 70.3340, "code": "VNTL"},
+    {"id": "JND", "nameGu": "જૂનાગઢ (બસ સ્ટેશન)", "nameEn": "Junagadh", "lat": 21.5225, "lng": 70.4575, "code": "JND"},
+    {"id": "DHJ", "nameGu": "ધોરાજી (બસ સ્ટેશન)", "nameEn": "Dhoraji", "lat": 21.7348, "lng": 70.4502, "code": "DHJ"},
+    {"id": "UPL", "nameGu": "ઉપલેટા (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Upleta Bus Stand", "lat": 21.7335, "lng": 70.2828, "code": "UPL"},
+    {"id": "SPD", "nameGu": "સુપેડી", "nameEn": "Supedi", "lat": 21.7582, "lng": 70.3552, "code": "SPD"},
     {"id": "GDL", "nameGu": "ગોંડલ (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Gondal", "lat": 21.9610, "lng": 70.7960, "code": "GDL"},
-    {"id": "PBR", "nameGu": "પોરબંદર (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Porbandar", "lat": 21.6417, "lng": 69.6293, "code": "PBR"},
+    {"id": "PBR", "nameGu": "પોરબંદર (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Porbandar", "lat": 21.6425, "lng": 69.6288, "code": "PBR"},
     {"id": "DWK", "nameGu": "દ્વારકા (બસ સ્ટેશન)", "nameEn": "Dwarka", "lat": 22.2442, "lng": 68.9685, "code": "DWK"},
     {"id": "AMR", "nameGu": "અમરેલી (સેન્ટ્રલ ડેપો)", "nameEn": "Amreli Central", "lat": 21.6030, "lng": 71.2220, "code": "AMR"},
     {"id": "SVK", "nameGu": "સાવરકુંડલા (એસ.ટી.)", "nameEn": "Savarkundla", "lat": 21.3320, "lng": 71.3070, "code": "SVK"},
@@ -749,8 +749,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                         'placeCode': 'PRCH',
                         'time': f"{h:02d}:{m:02d}",
                         'mins': prc_mins,
-                        'lat': 20.9380,
-                        'lng': 70.6120
+                        'lat': 20.9238,
+                        'lng': 70.6135
                     })
                     if p_n['mins'] < prc_mins + 25:
                         p_n['mins'] = prc_mins + 25
@@ -770,8 +770,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                         'placeCode': 'PRCH',
                         'time': f"{h:02d}:{m:02d}",
                         'mins': prc_mins,
-                        'lat': 20.9380,
-                        'lng': 70.6120
+                        'lat': 20.9238,
+                        'lng': 70.6135
                     })
                     if p_n['mins'] < prc_mins + 35:
                         p_n['mins'] = prc_mins + 35

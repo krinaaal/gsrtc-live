@@ -1,8 +1,9 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-cache/
+cache/*
+!cache/routes/
+!cache/routes/*.json
 
 # OS
 .DS_Store
