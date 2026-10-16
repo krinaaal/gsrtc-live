@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GSRTC Live - Krinal ❤️ Mittal Special Edition</title>
+
+  <!-- PWA Metadata -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#be123c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GSRTC Live ❤️">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" href="./icons/icon-72.png">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bg-rose-50/40 text-slate-900 antialiased selection:bg-rose-200">
+
+  <!-- Top Romantic App Bar -->
+  <header class="glass-header sticky top-0 z-40 px-4 py-3 flex items-center justify-between border-b border-rose-900">
+    <div class="flex items-center gap-2.5">
+      <div class="w-10 h-10 rounded-2xl bg-white p-1 shadow-md flex items-center justify-center overflow-hidden border border-rose-200">
+        <img src="./icons/icon-192.png" alt="GSRTC Logo" class="w-full h-full object-contain">
+      </div>
+      <div>
+        <h1 class="text-base font-extrabold tracking-tight leading-tight flex items-center gap-1.5 text-white">
+          GSRTC Live <span class="love-heart-float">💖</span>
+        </h1>
+        <p class="text-[11px] text-rose-100 font-medium leading-none">
+          Krinal <span class="text-rose-300">❤️</span> Mittal Special Edition
+        </p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Love Note Button -->
+      <button id="btn-open-love-note" class="px-2.5 py-1 text-xs font-bold rounded-xl bg-white/15 hover:bg-white/25 text-rose-100 border border-rose-300/40 transition flex items-center gap-1 shadow-sm active:scale-95">
+        💌 <span class="hidden sm:inline">પ્રેમ સંદેશ</span>
+      </button>
+
+      <!-- Language Switcher -->
+      <button id="lang-toggle-btn" class="px-2.5 py-1 text-xs font-bold rounded-xl bg-rose-950/60 hover:bg-rose-950 text-white border border-rose-400/40 transition">
+        English
+      </button>
+    </div>
+  </header>
+
+  <!-- Sweet Love Banner Dedicated from Krinal to Mittal -->
+  <div class="love-banner px-4 py-2 flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-2 text-xs font-semibold text-rose-900">
+      <span class="text-base">🌹</span>
+      <div>
+        <span>પ્યારી મિત્તલ, તારી દરેક સફર સુરક્ષિત રહે એ જ ક્રીનલની પ્રાર્થના 💕</span>
+      </div>
+    </div>
+    <span class="text-xs font-extrabold text-rose-600 font-mono tracking-wider shrink-0 bg-white px-2 py-0.5 rounded-full border border-rose-200">
+      K ❤️ M
+    </span>
+  </div>
+
+  <!-- PWA Install Banner -->
+  <div id="pwa-install-banner" class="hidden bg-gradient-to-r from-rose-600 to-rose-700 text-white px-4 py-2.5 shadow-md flex items-center justify-between z-30 transition-all">
+    <div class="flex items-center gap-2 text-xs font-medium">
+      <span class="text-lg">📲</span>
+      <div>
+        <div class="font-bold leading-tight">મિત્તલ માટે સ્પેશિયલ એપ ઇન્સ્ટોલ કરો</div>
+        <div class="text-[11px] text-rose-100 leading-tight">ક્રોમમાંથી સીધી હોમસ્ક્રીન પર સેવ કરો</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <button id="pwa-install-btn" class="px-3 py-1 bg-white text-rose-800 rounded-lg text-xs font-extrabold shadow hover:bg-rose-50 transition active:scale-95">
+        ઇન્સ્ટોલ
+      </button>
+      <button id="pwa-dismiss-btn" class="p-1 text-rose-200 hover:text-white text-sm font-bold">✕</button>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="max-w-md mx-auto px-4 py-3">
+
+    <!-- VIEW 1: SEARCH & BUS LIST -->
+    <section id="view-search" class="tab-content fade-in space-y-3.5">
+      
+      <!-- Search Card -->
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-rose-100 space-y-3">
+        <!-- From Station -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1" data-i18n="fromStation">
+            ક્યાંથી (ઉપડવાનું સ્ટેશન)
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-3 text-rose-600 text-sm">🟢</span>
+            <select id="select-from" class="w-full pl-9 pr-3 py-2.5 bg-rose-50/40 border border-rose-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Swap Button Divider -->
+        <div class="relative flex items-center justify-center my-0.5">
+          <div class="w-full border-t border-rose-100"></div>
+          <button id="btn-swap" class="absolute bg-white border border-rose-200 w-8 h-8 rounded-full flex items-center justify-center text-rose-600 shadow-sm hover:text-rose-800 hover:border-rose-400 active:rotate-180 transition duration-300">
+            ⇅
+          </button>
+        </div>
+
+        <!-- To Station -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1" data-i18n="toStation">
+            ક્યાં પહોંચવું છે (ગંતવ્ય)
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-3 text-rose-600 text-sm">🔴</span>
+            <select id="select-to" class="w-full pl-9 pr-3 py-2.5 bg-rose-50/40 border border-rose-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Popular Routes Pills -->
+        <div class="pt-1">
+          <span class="text-[11px] text-slate-400 font-semibold block mb-1.5" data-i18n="popularRoutes">લોકપ્રિય રૂટ્સ:</span>
+          <div id="popular-routes-container" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <!-- Dynamic route pills -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Count & Live Clock Header -->
+      <div class="flex items-center justify-between px-1">
+        <div>
+          <h2 class="text-sm font-bold text-slate-800" data-i18n="tabSearch">હવે પછી આવનારી બસો</h2>
+          <span class="text-[11px] text-slate-500">હાલના સમયથી આગળનો ક્રમબદ્ધ સમયપત્રક</span>
+        </div>
+        <span id="bus-count-badge" class="text-xs font-semibold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-200">
+          શોધી રહ્યા છીએ...
+        </span>
+      </div>
+
+      <!-- Bus Schedule List (Chronologically forward from current time) -->
+      <div id="bus-list-container" class="space-y-3">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- VIEW 2: DEDICATED LIVE BUS TRACKING GOOGLE MAP -->
+    <section id="view-track" class="tab-content hidden fade-in space-y-3">
+      <!-- Live Bus Details Card -->
+      <div id="live-bus-card">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+
+      <!-- Dedicated Google Map for Bus Tracking -->
+      <div class="relative bg-white rounded-3xl overflow-hidden shadow-sm border border-rose-200 h-[480px]">
+        <div id="bus-track-map" class="w-full h-full z-10"></div>
+        
+        <!-- Google Maps Branding Pill -->
+        <div class="absolute top-3 left-3 z-20 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl text-[11px] font-bold text-slate-800 shadow border border-slate-200 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+          </svg>
+          Google Maps • બસ લાઈવ
+        </div>
+
+        <div class="absolute top-3 right-3 z-20 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl text-[11px] font-bold text-slate-700 shadow border border-rose-200 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          GPS Real-time Live
+        </div>
+
+        <!-- Floating Map Action Controls -->
+        <div class="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
+          <button id="btn-toggle-autofollow" class="pointer-events-auto px-3.5 py-2 bg-white/95 backdrop-blur border border-rose-200 text-slate-800 rounded-2xl text-xs font-bold shadow-lg hover:bg-rose-50 transition flex items-center gap-1.5 active:scale-95">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span id="label-autofollow">ઓટો-ફોલો ચાલુ</span>
+          </button>
+
+          <button id="btn-center-bus" class="pointer-events-auto px-3.5 py-2 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-2xl text-xs font-bold shadow-lg hover:from-rose-700 hover:to-rose-800 transition flex items-center gap-1.5 active:scale-95 border border-white">
+            <span>🎯</span> બસ પર કેન્દ્રિત
+          </button>
+        </div>
+      </div>
+
+      <!-- Bus Live Info Note -->
+      <div class="p-3 bg-white rounded-2xl border border-rose-100 text-xs text-slate-600 flex items-center gap-2">
+        <span class="text-base text-rose-600">🛣️</span>
+        <span>Google Maps પર બસ હાઇવે રોડના વાસ્તવિક વળાંકો પર જ આગળ વધી રહી છે.</span>
+      </div>
+    </section>
+
+    <!-- VIEW 3: DEDICATED STATION EXPLORER & NEARBY STATION FINDER MAP -->
+    <section id="view-stations" class="tab-content hidden fade-in space-y-3">
+      <!-- Station Search Bar -->
+      <div class="bg-white rounded-3xl p-3 shadow-sm border border-rose-100 flex items-center gap-2">
+        <span class="text-rose-600 text-base ml-1">🔍</span>
+        <input id="input-station-search" type="text" placeholder="સ્ટેશન શોધો (દા.ત. વેરાવળ, પ્રાચી, કોડીનાર, ઉના...)"
+          class="w-full text-xs font-bold text-slate-800 bg-transparent focus:outline-none placeholder-slate-400" />
+      </div>
+
+      <!-- Dedicated Google Map for Station Discovery -->
+      <div class="relative bg-white rounded-3xl overflow-hidden shadow-sm border border-rose-200 h-[480px]">
+        <div id="stations-map" class="w-full h-full z-10"></div>
+        
+        <!-- Google Maps Branding Pill -->
+        <div class="absolute top-3 left-3 z-20 bg-white/95 backdrop-blur px-2.5 py-1 rounded-xl text-[11px] font-bold text-slate-800 shadow border border-slate-200 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 10.04 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+          </svg>
+          GSRTC સ્ટેશન નેટવર્ક
+        </div>
+
+        <!-- Floating Find Nearest Station Button -->
+        <button id="btn-find-nearest-station" class="absolute bottom-4 left-4 z-20 px-4 py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-2xl text-xs font-bold shadow-xl hover:from-rose-700 hover:to-rose-800 transition flex items-center gap-2 active:scale-95 border-2 border-white">
+          <span>📍</span> મારું નજીકનું સ્ટેશન શોધો
+        </button>
+      </div>
+
+      <!-- Station Hint -->
+      <div class="p-3 bg-white rounded-2xl border border-rose-100 text-xs text-slate-600 flex items-center gap-2">
+        <span class="text-base text-rose-600">💡</span>
+        <span>નકશા પર કોઈપણ સ્ટેશનના ટપકાં (Marker) પર ક્લિક કરીને ત્યાં આવનારી તમામ બસો લાઈવ જોઈ શકો છો!</span>
+      </div>
+    </section>
+
+    <!-- VIEW 3: STATION DIGITAL BOARD -->
+    <section id="view-board" class="tab-content hidden fade-in space-y-3">
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-rose-100">
+        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2" data-i18n="stationBoardTitle">
+          સ્ટેશન ડિજિટલ બોર્ડ (આવતી/જતી બસો)
+        </label>
+        <select id="select-board-station" class="w-full px-3 py-2.5 bg-rose-50/40 border border-rose-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500">
+          <!-- Dynamically populated -->
+        </select>
+      </div>
+
+      <div id="board-list-container" class="space-y-2">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+    <!-- VIEW 4: HELPLINE & DEPOT DIRECTORY -->
+    <section id="view-helpline" class="tab-content hidden fade-in space-y-3">
+      <!-- Toll-Free Hero Card -->
+      <div class="bg-gradient-to-r from-rose-700 to-rose-900 text-white rounded-3xl p-4 shadow-sm border border-rose-600">
+        <div class="text-xs text-rose-200 font-semibold mb-1" data-i18n="emergencyText">કોઈપણ મુસાફરી પૂછપરછ માટે સંપર્ક કરો:</div>
+        <div class="text-2xl font-black font-mono tracking-wider">1800 233 6666</div>
+        <div class="text-xs text-rose-100 mt-1 font-medium">GSRTC Toll-Free Helpline (24x7)</div>
+      </div>
+
+      <div class="px-1 text-xs font-bold text-slate-500 uppercase tracking-wider" data-i18n="helplineTitle">
+        GSRTC મુખ્ય ડેપો કંટ્રોલ રૂમ
+      </div>
+
+      <div id="helpline-list-container" class="space-y-2">
+        <!-- Rendered by app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Station Bus Drawer / Modal (When Station clicked on Map) -->
+  <div id="station-bus-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all">
+    <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl max-h-[85vh] flex flex-col gap-3 fade-in border border-rose-100">
+      <div class="flex items-center justify-between border-b border-rose-100 pb-2.5">
+        <div>
+          <span class="text-xs text-rose-600 font-bold uppercase tracking-wider">સ્ટેશન લાઈવ બોર્ડ</span>
+          <h3 id="station-modal-title" class="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
+            📍 વેરાવળ
+          </h3>
+        </div>
+        <button id="btn-close-station-modal" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">✕</button>
+      </div>
+
+      <div class="text-xs text-slate-500 font-medium">
+        આ સ્ટેશને આવનારી અને અહીંથી ઉપડનારી આગામી બસો:
+      </div>
+
+      <div id="station-modal-buses" class="space-y-2.5 overflow-y-auto max-h-[55vh] pr-1">
+        <!-- Dynamic buses for this station -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Krinal's Sweet Love Note Modal for Mittal -->
+  <div id="love-note-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+    <div class="bg-gradient-to-b from-white to-rose-50 w-full max-w-sm rounded-3xl p-6 shadow-2xl border-2 border-rose-200 text-center relative fade-in">
+      <button id="btn-close-love-note" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-700 flex items-center justify-center font-bold text-xs">✕</button>
+
+      <div class="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center mx-auto mb-3 shadow-inner">
+        <span class="text-3xl love-heart-float">💖</span>
+      </div>
+
+      <h3 class="text-lg font-extrabold text-rose-950 mb-1">
+        મારી વાહલી મિત્તલ માટે 💕
+      </h3>
+      <p class="text-xs font-bold text-rose-600 mb-3 tracking-wide">
+        Made with Endless Love by Krinal
+      </p>
+
+      <div class="bg-white/80 p-4 rounded-2xl border border-rose-100 text-sm text-slate-700 leading-relaxed text-left space-y-2 shadow-sm font-medium">
+        <p>તમે જ્યારે પણ ઘરથી બહાર નીકળો કે પાછા આવો, ત્યારે તમારી બસનું લાઈવ લોકેશન હંમેશા તમારી સાથે રહેશે.</p>
+        <p>તમારી દરેક મુસાફરી ખુશહાલ અને સુરક્ષિત રહે એ જ મારી પ્રાર્થના છે. તું ચિંતા વગર સફર કરજે, તારી બસનું ધ્યાન હું રાખીશ! 🌹</p>
+        <p class="text-right text-xs font-extrabold text-rose-700 pt-2 border-t border-rose-100">
+          સદાય તારો જ,<br>
+          <span class="text-sm font-black">ક્રીનલ ❤️</span>
+        </p>
+      </div>
+
+      <button id="btn-ack-love-note" class="mt-4 w-full py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 text-white rounded-xl text-xs font-bold shadow-md hover:from-rose-700 hover:to-rose-800 transition active:scale-95">
+        Sweet Message બંધ કરો 🥰
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-rose-100 px-2 py-1.5 shadow-lg">
+    <div class="max-w-md mx-auto grid grid-cols-4 gap-1 text-center">
+      <!-- Tab 1: Search -->
+      <button class="nav-tab-btn py-1.5 px-1 rounded-2xl flex flex-col items-center justify-center text-rose-700 bg-rose-50 font-bold transition text-xs active-tab" data-tab="search">
+        <span class="text-lg">🔍</span>
+        <span class="text-[10px] mt-0.5" data-i18n="tabSearch">બસ શોધો</span>
+      </button>
+
+      <!-- Tab 2: Dedicated Live Bus Tracking Map -->
+      <button class="nav-tab-btn py-1.5 px-1 rounded-2xl flex flex-col items-center justify-center text-slate-600 font-semibold transition text-xs hover:bg-rose-50/50" data-tab="track">
+        <span class="text-lg">🚌</span>
+        <span class="text-[10px] mt-0.5" data-i18n="tabTrack">બસ ટ્રેકિંગ</span>
+      </button>
+
+      <!-- Tab 3: Dedicated Station Discovery Map -->
+      <button class="nav-tab-btn py-1.5 px-1 rounded-2xl flex flex-col items-center justify-center text-slate-600 font-semibold transition text-xs hover:bg-rose-50/50" data-tab="stations">
+        <span class="text-lg">📍</span>
+        <span class="text-[10px] mt-0.5" data-i18n="tabStations">નજીકનું સ્ટેશન</span>
+      </button>
+
+      <!-- Tab 4: Station Board -->
+      <button class="nav-tab-btn py-1.5 px-1 rounded-2xl flex flex-col items-center justify-center text-slate-600 font-semibold transition text-xs hover:bg-rose-50/50" data-tab="board">
+        <span class="text-lg">🕒</span>
+        <span class="text-[10px] mt-0.5" data-i18n="tabBoard">સ્ટેશન બોર્ડ</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main JavaScript Logic -->
+  <script src="./app.js"></script>
+</body>
+</html>

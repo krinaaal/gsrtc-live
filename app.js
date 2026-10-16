@@ -1,0 +1,1324 @@
+/**
+ * GSRTC Live Clone - Mobile PWA & Real-Time Bus Tracker
+ * Exclusively designed by Krinal ❤️ Mittal (ક્રીનલ ❤️ મિત્તલ)
+ * Directly powered by official GSRTC WebServices (gsrtc.in) backend
+ */
+
+// --- 1. Authentic Stations Database with GPS Coordinates ---
+const STATIONS = [
+  // Gir-Somnath, Junagadh & Coastal Belt
+  { id: 'VRL', nameGu: 'વેરાવળ (એસ.ટી. બસ સ્ટેશન)', nameEn: 'Veraval (ST Bus Stand)', lat: 20.9010, lng: 70.3629, code: 'VRL' },
+  { id: 'PRC', nameGu: 'પ્રાચી તીર્થ (બસ સ્ટેન્ડ)', nameEn: 'Prachi Tirtha', lat: 20.9380, lng: 70.6120, code: 'PRC' },
+  { id: 'KDN', nameGu: 'કોડીનાર (એસ.ટી. બસ ડેપો)', nameEn: 'Kodinar Depot', lat: 20.7936, lng: 70.7027, code: 'KDN' },
+  { id: 'UNA', nameGu: 'ઉના (એસ.ટી. બસ સ્ટેશન)', nameEn: 'Una Bus Stand', lat: 20.8242, lng: 71.0392, code: 'UNA' },
+  { id: 'DIU', nameGu: 'દીવ (એસ.ટી. બસ સ્ટેન્ડ)', nameEn: 'Diu Bus Stand', lat: 20.7144, lng: 70.9874, code: 'DIU' },
+  { id: 'SMN', nameGu: 'સોમનાથ (યાત્રાધામ સ્ટેન્ડ)', nameEn: 'Somnath Temple Stand', lat: 20.8880, lng: 70.4010, code: 'SMN' },
+  { id: 'TLG', nameGu: 'તાલાલા ગીર (બસ સ્ટેન્ડ)', nameEn: 'Talala Gir', lat: 21.0450, lng: 70.5250, code: 'TLG' },
+  { id: 'RJL', nameGu: 'રાજુલા (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Rajula', lat: 20.9990, lng: 71.4330, code: 'RJL' },
+  { id: 'MHV', nameGu: 'મહુવા (એસ.ટી. ડેપો)', nameEn: 'Mahuva Depot', lat: 21.0910, lng: 71.7630, code: 'MHV' },
+  { id: 'JFR', nameGu: 'જાફરાબાદ (બસ સ્ટેશન)', nameEn: 'Jafrabad', lat: 20.8660, lng: 71.3660, code: 'JFR' },
+  { id: 'KSD', nameGu: 'કેશોદ (બસ સ્ટેશન)', nameEn: 'Keshod', lat: 21.3039, lng: 70.2520, code: 'KSD' },
+  { id: 'MNG', nameGu: 'માંગરોળ (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Mangrol', lat: 21.1215, lng: 70.1170, code: 'MNG' },
+  { id: 'UPL', nameGu: 'ઉપલેટા (એસ.ટી. બસ સ્ટેશન)', nameEn: 'Upleta Bus Stand', lat: 21.7340, lng: 70.2800, code: 'UPL' },
+  { id: 'DHJ', nameGu: 'ધોરાજી (બસ સ્ટેશન)', nameEn: 'Dhoraji', lat: 21.7330, lng: 70.4500, code: 'DHJ' },
+  { id: 'GDL', nameGu: 'ગોંડલ (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Gondal', lat: 21.9619, lng: 70.7925, code: 'GDL' },
+  { id: 'JND', nameGu: 'જૂનાગઢ (બસ સ્ટેશન)', nameEn: 'Junagadh', lat: 21.5222, lng: 70.4579, code: 'JND' },
+  { id: 'AMR', nameGu: 'અમરેલી (સેન્ટ્રલ ડેપો)', nameEn: 'Amreli Central', lat: 21.6032, lng: 71.2223, code: 'AMR' },
+  { id: 'SVK', nameGu: 'સાવરકુંડલા (એસ.ટી.)', nameEn: 'Savarkundla', lat: 21.3330, lng: 71.3000, code: 'SVK' },
+
+  // Statewide Major Hubs
+  { id: 'ADI', nameGu: 'અમદાવાદ (ગીતા મંદિર)', nameEn: 'Ahmedabad (Geeta Mandir)', lat: 23.0131, lng: 72.5913, code: 'GTM' },
+  { id: 'RJT', nameGu: 'રાજકોટ (સેન્ટ્રલ બસ સ્ટેન્ડ)', nameEn: 'Rajkot (Central)', lat: 22.3039, lng: 70.8022, code: 'RJT' },
+  { id: 'ST', nameGu: 'સુરત (સેન્ટ્રલ બસ સ્ટેશન)', nameEn: 'Surat (Central)', lat: 21.1959, lng: 72.8302, code: 'SUR' },
+  { id: 'BRD', nameGu: 'વડોદરા (સેન્ટ્રલ એસ.ટી. સ્ટેન્ડ)', nameEn: 'Vadodara (Central)', lat: 22.3106, lng: 73.1812, code: 'BRD' },
+  { id: 'BVN', nameGu: 'ભાવનગર (એસ.ટી. બસ સ્ટેશન)', nameEn: 'Bhavnagar', lat: 21.7645, lng: 72.1519, code: 'BVN' },
+  { id: 'JMN', nameGu: 'જામનગર (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Jamnagar', lat: 22.4707, lng: 70.0577, code: 'JMN' },
+  { id: 'BHJ', nameGu: 'ભુજ (કચ્છ એસ.ટી. સ્ટેન્ડ)', nameEn: 'Bhuj (Kutch)', lat: 23.2420, lng: 69.6669, code: 'BHJ' },
+  { id: 'PBR', nameGu: 'પોરબંદર (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Porbandar', lat: 21.6417, lng: 69.6293, code: 'PBR' },
+  { id: 'DWK', nameGu: 'દ્વારકા (બસ સ્ટેશન)', nameEn: 'Dwarka', lat: 22.2442, lng: 68.9685, code: 'DWK' },
+  { id: 'MRB', nameGu: 'મોરબી (નવા બસ સ્ટેન્ડ)', nameEn: 'Morbi', lat: 22.8120, lng: 70.8407, code: 'MRB' },
+  { id: 'SDR', nameGu: 'સુરેન્દ્રનગર (બસ સ્ટેન્ડ)', nameEn: 'Surendranagar', lat: 22.7279, lng: 71.6370, code: 'SDR' },
+  { id: 'GNR', nameGu: 'ગાંધીનગર (સેક્ટર ૧૧ ડેપો)', nameEn: 'Gandhinagar (Sec 11)', lat: 23.2156, lng: 72.6369, code: 'GNR' },
+  { id: 'MSH', nameGu: 'મહેસાણા (બસ સ્ટેન્ડ)', nameEn: 'Mehsana', lat: 23.5880, lng: 72.3693, code: 'MSH' },
+  { id: 'PLN', nameGu: 'પાલનપુર (એસ.ટી. સ્ટેશન)', nameEn: 'Palanpur', lat: 24.1724, lng: 72.4346, code: 'PLN' },
+  { id: 'AND', nameGu: 'આણંદ (નવું બસ સ્ટેશન)', nameEn: 'Anand', lat: 22.5645, lng: 72.9289, code: 'AND' },
+  { id: 'NDD', nameGu: 'નડિયાદ (એસ.ટી. ડેપો)', nameEn: 'Nadiad', lat: 22.6916, lng: 72.8634, code: 'NDD' },
+  { id: 'BRC', nameGu: 'ભરૂચ (એસ.ટી. સ્ટેન્ડ)', nameEn: 'Bharuch', lat: 21.7051, lng: 72.9959, code: 'BRC' },
+  { id: 'NVS', nameGu: 'નવસારી (બસ સ્ટેન્ડ)', nameEn: 'Navsari', lat: 20.9467, lng: 72.9520, code: 'NVS' },
+  { id: 'VLS', nameGu: 'વલસાડ (એસ.ટી. ડેપો)', nameEn: 'Valsad', lat: 20.6105, lng: 72.9268, code: 'VLS' },
+  { id: 'AMB', nameGu: 'અંબાજી (યાત્રાધામ સ્ટેશન)', nameEn: 'Ambaji', lat: 24.3313, lng: 72.8504, code: 'AMB' }
+];
+
+// --- 2. Highway Waypoint Splines for Precision On-Road Driving (NH 51 / SH 26 / NH 27) ---
+const HIGHWAY_ROAD_SECTORS = {
+  'VRL-SMN': [
+    [20.9010, 70.3629], [20.8980, 70.3680], [20.8940, 70.3750], [20.8910, 70.3830],
+    [20.8890, 70.3920], [20.8880, 70.4010]
+  ],
+  'SMN-PRC': [
+    [20.8880, 70.4010], [20.8950, 70.4200], [20.9020, 70.4450], [20.9110, 70.4800],
+    [20.9200, 70.5200], [20.9290, 70.5650], [20.9380, 70.6120]
+  ],
+  'PRC-KDN': [
+    [20.9380, 70.6120], [20.9200, 70.6300], [20.8900, 70.6500], [20.8500, 70.6700],
+    [20.8200, 70.6880], [20.7936, 70.7027]
+  ],
+  'VRL-PRC': [
+    [20.9010, 70.3629], [20.8880, 70.4010], [20.9020, 70.4450], [20.9200, 70.5200],
+    [20.9380, 70.6120]
+  ],
+  'VRL-KDN': [
+    [20.9010, 70.3629], [20.8880, 70.4010], [20.9020, 70.4450], [20.9200, 70.5200],
+    [20.9380, 70.6120], [20.8900, 70.6500], [20.8500, 70.6700], [20.8200, 70.6880],
+    [20.7936, 70.7027]
+  ],
+  'SMN-KDN': [
+    [20.8880, 70.4010], [20.8920, 70.4300], [20.8750, 70.4900], [20.8500, 70.5500],
+    [20.8250, 70.6200], [20.8050, 70.6700], [20.7936, 70.7027]
+  ],
+  'KDN-UNA': [
+    [20.7936, 70.7027], [20.7850, 70.7400], [20.7720, 70.7900], [20.7650, 70.8500],
+    [20.7800, 70.9200], [20.8050, 70.9800], [20.8242, 71.0392]
+  ],
+  'UNA-DIU': [
+    [20.8242, 71.0392], [20.8000, 71.0300], [20.7750, 71.0180], [20.7500, 71.0080],
+    [20.7300, 70.9980], [20.7144, 70.9874]
+  ],
+  'VRL-UNA': [
+    [20.9010, 70.3629], [20.8880, 70.4010], [20.9380, 70.6120], [20.7936, 70.7027],
+    [20.7650, 70.8500], [20.8242, 71.0392]
+  ],
+  'VRL-DIU': [
+    [20.9010, 70.3629], [20.8880, 70.4010], [20.9380, 70.6120], [20.7936, 70.7027],
+    [20.8242, 71.0392], [20.7144, 70.9874]
+  ],
+  'PBR-VRL': [
+    [21.6417, 69.6293], [21.4500, 69.7800], [21.2550, 69.9550], [21.1950, 70.0200],
+    [21.1215, 70.1170], [20.9980, 70.2350], [20.9010, 70.3629]
+  ],
+  'JND-KSD': [
+    [21.5222, 70.4579], [21.4800, 70.4200], [21.4300, 70.3700], [21.3700, 70.3100],
+    [21.3039, 70.2520]
+  ],
+  'KSD-VRL': [
+    [21.3039, 70.2520], [21.2400, 70.2700], [21.1600, 70.3000], [21.0800, 70.3300],
+    [20.9800, 70.3550], [20.9010, 70.3629]
+  ],
+  'UPL-DHJ': [
+    [21.7340, 70.2800], [21.7335, 70.3500], [21.7330, 70.4500]
+  ],
+  'DHJ-JND': [
+    [21.7330, 70.4500], [21.6800, 70.4500], [21.6000, 70.4550], [21.5222, 70.4579]
+  ],
+  'JND-PRC': [
+    [21.5222, 70.4579], [21.4000, 70.4800], [21.2500, 70.5200], [21.1000, 70.5700],
+    [20.9380, 70.6120]
+  ],
+  'UNA-RJL': [
+    [20.8242, 71.0392], [20.8650, 71.1500], [20.9200, 71.2800], [20.9990, 71.4330]
+  ],
+  'RJL-MHV': [
+    [20.9990, 71.4330], [21.0300, 71.5500], [21.0650, 71.6500], [21.0910, 71.7630]
+  ],
+  'MHV-BVN': [
+    [21.0910, 71.7630], [21.2930, 71.8500], [21.4500, 71.9500], [21.7645, 72.1519]
+  ],
+  'JND-GDL': [
+    [21.5222, 70.4579], [21.6500, 70.5800], [21.8000, 70.6900], [21.9619, 70.7925]
+  ],
+  'GDL-RJT': [
+    [21.9619, 70.7925], [22.0800, 70.8000], [22.1800, 70.8010], [22.3039, 70.8022]
+  ]
+};
+
+// --- 3. Romantic Krinal & Mittal Quotes ---
+const LOVE_NOTES = [
+  "જિંદગીની દરેક સફર સુંદર બની જાય છે મિત્તલ, જ્યારે તું મારી સાથે હોય છે. - Krinal ❤️",
+  "બસ ગમે તેટલી દૂર જાય, મારું દિલ હંમેશા તારી પાસે જ રહે છે મારા પ્રેમ. - Krinal ❤️",
+  "ઈશ્વર કરે તારી દરેક મુસાફરી સુખરૂપ અને મંગલમય રહે, મારી વ્હાલી મિત્તલ. - Krinal ❤️",
+  "જ્યાં સુધી રસ્તાઓ છે અને શ્વાસ છે, હું તને આ જ રીતે અનહદ પ્રેમ કરતો રહીશ. - Krinal ❤️",
+  "તારા મુખ પરનું હાસ્ય જ મારા જીવનની સૌથી મોટી મૂડી છે, ડિયર વાઈફ મિત્તલ. - Krinal ❤️"
+];
+
+// --- 4. Translations & i18n ---
+const I18N = {
+  gu: {
+    appTitle: 'GSRTC લાઈવ 💖 ક્રીનલ & મિત્તલ',
+    appSubtitle: 'ગુજરાત એસ.ટી. અસલ લાઈવ ટ્રેકિંગ • પત્ની મિત્તલ માટે સમર્પિત',
+    tabSearch: 'બસ શોધો',
+    tabTrack: 'બસ ટ્રેકિંગ',
+    tabStations: 'નજીકનું સ્ટેશન',
+    tabBoard: 'સ્ટેશન બોર્ડ',
+    tabHelpline: 'હેલ્પલાઇન',
+    fromLabel: 'ક્યાંથી (ઉપડવાનું સ્ટેશન)',
+    toLabel: 'ક્યાં સુધી (પહોંચવાનું સ્થળ)',
+    searchBtn: 'બસ સમયપત્રક શોધો',
+    popularRoutes: 'લોકપ્રિય રૂટ્સ:',
+    trackBusBtn: 'લાઈવ ટ્રેક કરો',
+    fare: 'ભાડું:',
+    platform: 'પ્લેટફોર્મ નં:',
+    departs: 'ઉપડશે:',
+    arrives: 'પહોંચશે:',
+    speed: 'ઝડપ:',
+    kmh: 'કિમી/કલાક',
+    selectStation: 'સ્ટેશન પસંદ કરો',
+    stationBoardTitle: 'સ્ટેશન ડિજિટલ બોર્ડ (સમયસારણી)',
+    noBusesFound: 'આ રૂટ માટે હાલ કોઈ બસ ઉપલબ્ધ નથી.'
+  },
+  en: {
+    appTitle: 'GSRTC Live 💖 Krinal & Mittal',
+    appSubtitle: 'Official Gujarat ST Real Tracking • Dedicated to Wife Mittal',
+    tabSearch: 'Search Bus',
+    tabTrack: 'Bus Tracking',
+    tabStations: 'Nearby Station',
+    tabBoard: 'Station Board',
+    tabHelpline: 'Helpline',
+    fromLabel: 'From Station',
+    toLabel: 'To Station',
+    searchBtn: 'Search Buses',
+    popularRoutes: 'Popular Routes:',
+    trackBusBtn: 'Live Track',
+    fare: 'Fare:',
+    platform: 'Platform No:',
+    departs: 'Departs:',
+    arrives: 'Arrives:',
+    speed: 'Speed:',
+    kmh: 'km/h',
+    selectStation: 'Select Station',
+    stationBoardTitle: 'Digital Station Schedule Board',
+    noBusesFound: 'No buses found for this route.'
+  }
+};
+
+// --- Global Application State ---
+let currentLang = 'gu';
+let trackMapInstance = null;
+let stationsMapInstance = null;
+let stationMarkersOnMap = [];
+
+let routeLine = null;
+let busMarker = null;
+let stopMarkers = [];
+let activeTrackingTripCode = null;
+let liveTrackingInterval = null;
+let activeRoadCoordinates = [];
+let activeRouteSegments = [];
+let roadCache = {};
+
+let trackMapUserZoom = null;
+let isAutoFollowEnabled = true;
+let isInitialTripTrack = true;
+let currentBusLocation = null;
+let deferredPrompt = null;
+
+// Helpers
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const parts = timeStr.trim().split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function t(key) {
+  return I18N[currentLang][key] || key;
+}
+
+function calculateBearing(lat1, lon1, lat2, lon2) {
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const y = Math.sin(deltaLambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(deltaLambda);
+  const theta = Math.atan2(y, x);
+  return Math.round(((theta * 180 / Math.PI) + 360) % 360);
+}
+
+function getCoordsDist(c1, c2) {
+  const dLat = c2[0] - c1[0];
+  const dLng = (c2[1] - c1[1]) * Math.cos((c1[0] * Math.PI) / 180);
+  return Math.hypot(dLat, dLng);
+}
+
+// --- 5. Application Initialization ---
+document.addEventListener('DOMContentLoaded', () => {
+  initLanguage();
+  initStationDropdowns();
+  initTabs();
+  initPopularRoutes();
+  initStationBoardDropdown();
+  initLoveNotes();
+  initPwaInstall();
+  initHelpline();
+
+  // Initial bus search (Veraval to Kodinar)
+  handleSearch();
+
+  // Register PWA Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('GSRTC Live PWA Service Worker Registered'))
+      .catch(err => console.error('SW Registration Failed:', err));
+  }
+});
+
+// Love Notes Feature
+function initLoveNotes() {
+  const openBtn = document.getElementById('btn-open-love-note');
+  const closeBtn = document.getElementById('btn-close-love-note');
+  const ackBtn = document.getElementById('btn-ack-love-note');
+  const modal = document.getElementById('love-note-modal');
+
+  const showRandomNote = () => {
+    const textEl = document.getElementById('love-note-text');
+    if (textEl) {
+      const idx = Math.floor(Math.random() * LOVE_NOTES.length);
+      textEl.innerText = LOVE_NOTES[idx];
+    }
+    modal?.classList.remove('hidden');
+  };
+
+  openBtn?.addEventListener('click', showRandomNote);
+  closeBtn?.addEventListener('click', () => modal?.classList.add('hidden'));
+  ackBtn?.addEventListener('click', () => modal?.classList.add('hidden'));
+}
+
+// PWA Installation Handlers
+function initPwaInstall() {
+  const banner = document.getElementById('pwa-install-banner');
+  const installBtn = document.getElementById('pwa-install-btn');
+  const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    banner?.classList.remove('hidden');
+  });
+
+  installBtn?.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA install prompt outcome: ${outcome}`);
+      deferredPrompt = null;
+      banner?.classList.add('hidden');
+    }
+  });
+
+  dismissBtn?.addEventListener('click', () => banner?.classList.add('hidden'));
+}
+
+// Language Toggle
+function initLanguage() {
+  const btn = document.getElementById('lang-toggle-btn');
+  if (btn) {
+    btn.addEventListener('click', () => {
+      currentLang = currentLang === 'gu' ? 'en' : 'gu';
+      btn.innerText = currentLang === 'gu' ? 'English' : 'ગુજરાતી';
+      updateI18nLabels();
+      initStationDropdowns();
+      initPopularRoutes();
+      initStationBoardDropdown();
+      handleSearch();
+    });
+  }
+}
+
+function updateI18nLabels() {
+  const title = document.getElementById('app-title');
+  const subtitle = document.getElementById('app-subtitle');
+  if (title) title.innerText = t('appTitle');
+  if (subtitle) subtitle.innerText = t('appSubtitle');
+
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    el.innerText = t(key);
+  });
+}
+
+// --- Navigation Tabs & View Switching ---
+function initTabs() {
+  const tabBtns = document.querySelectorAll('.nav-tab-btn');
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetTab = btn.getAttribute('data-tab');
+      switchTab(targetTab);
+    });
+  });
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach((view) => view.classList.add('hidden'));
+  document.querySelectorAll('.nav-tab-btn').forEach((btn) => {
+    btn.classList.remove('text-rose-700', 'bg-rose-50', 'font-bold', 'active-tab');
+    btn.classList.add('text-slate-600', 'font-semibold');
+  });
+
+  const activeView = document.getElementById(`view-${tabName}`);
+  const activeBtn = document.querySelector(`.nav-tab-btn[data-tab="${tabName}"]`);
+
+  if (activeView) activeView.classList.remove('hidden');
+  if (activeBtn) {
+    activeBtn.classList.remove('text-slate-600', 'font-semibold');
+    activeBtn.classList.add('text-rose-700', 'bg-rose-50', 'font-bold', 'active-tab');
+  }
+
+  if (tabName === 'track') {
+    initTrackMapIfNeeded();
+    setTimeout(() => {
+      if (trackMapInstance) trackMapInstance.invalidateSize();
+    }, 200);
+  } else if (tabName === 'stations') {
+    initStationsMapIfNeeded();
+    setTimeout(() => {
+      if (stationsMapInstance) stationsMapInstance.invalidateSize();
+    }, 200);
+  } else if (tabName === 'board') {
+    renderStationBoard();
+  } else if (tabName === 'helpline') {
+    initHelpline();
+  }
+}
+
+// Station Dropdowns
+function initStationDropdowns() {
+  const fromSelect = document.getElementById('select-from');
+  const toSelect = document.getElementById('select-to');
+  const swapBtn = document.getElementById('btn-swap');
+  if (!fromSelect || !toSelect) return;
+
+  const prevFrom = fromSelect.value || 'VRL';
+  const prevTo = toSelect.value || 'KDN';
+
+  const sortedStations = [...STATIONS].sort((a, b) =>
+    (currentLang === 'gu' ? a.nameGu : a.nameEn).localeCompare(currentLang === 'gu' ? b.nameGu : b.nameEn)
+  );
+
+  const optionsHtml = sortedStations.map((st) => {
+    const label = currentLang === 'gu' ? st.nameGu : st.nameEn;
+    return `<option value="${st.id}">${label}</option>`;
+  }).join('');
+
+  fromSelect.innerHTML = optionsHtml;
+  toSelect.innerHTML = optionsHtml;
+
+  fromSelect.value = prevFrom;
+  toSelect.value = prevTo;
+
+  fromSelect.addEventListener('change', handleSearch);
+  toSelect.addEventListener('change', handleSearch);
+
+  if (swapBtn) {
+    swapBtn.addEventListener('click', () => {
+      const temp = fromSelect.value;
+      fromSelect.value = toSelect.value;
+      toSelect.value = temp;
+      handleSearch();
+    });
+  }
+
+  const searchBtn = document.getElementById('btn-search-buses');
+  if (searchBtn) {
+    searchBtn.addEventListener('click', handleSearch);
+  }
+}
+
+// Popular Routes Pills
+function initPopularRoutes() {
+  const container = document.getElementById('popular-routes-container');
+  if (!container) return;
+
+  const routes = [
+    { from: 'VRL', to: 'KDN', labelGu: 'વેરાવળ ➔ કોડીનાર', labelEn: 'Veraval ➔ Kodinar' },
+    { from: 'VRL', to: 'UNA', labelGu: 'વેરાવળ ➔ ઉના', labelEn: 'Veraval ➔ Una' },
+    { from: 'VRL', to: 'DIU', labelGu: 'વેરાવળ ➔ દીવ', labelEn: 'Veraval ➔ Diu' },
+    { from: 'JND', to: 'UNA', labelGu: 'જૂનાગઢ ➔ ઉના (વાયા પ્રાચી)', labelEn: 'Junagadh ➔ Una (via Prachi)' },
+    { from: 'UPL', to: 'UNA', labelGu: 'ઉપલેટા ➔ ઉના', labelEn: 'Upleta ➔ Una' },
+    { from: 'VRL', to: 'JND', labelGu: 'વેરાવળ ➔ જૂનાગઢ', labelEn: 'Veraval ➔ Junagadh' },
+    { from: 'RJT', to: 'VRL', labelGu: 'રાજકોટ ➔ વેરાવળ', labelEn: 'Rajkot ➔ Veraval' },
+    { from: 'ADI', to: 'SMN', labelGu: 'અમદાવાદ ➔ સોમનાથ', labelEn: 'Ahmedabad ➔ Somnath' }
+  ];
+
+  container.innerHTML = routes.map((r) => {
+    const label = currentLang === 'gu' ? r.labelGu : r.labelEn;
+    return `
+      <button onclick="selectPopularRoute('${r.from}', '${r.to}')"
+        class="px-3.5 py-1.5 text-xs font-semibold bg-white border border-rose-200 text-rose-800 rounded-full shadow-sm hover:bg-rose-50 active:scale-95 transition-all">
+        ${label}
+      </button>
+    `;
+  }).join('');
+}
+
+window.selectPopularRoute = function(fromId, toId) {
+  const fromSelect = document.getElementById('select-from');
+  const toSelect = document.getElementById('select-to');
+  if (fromSelect && toSelect) {
+    fromSelect.value = fromId;
+    toSelect.value = toId;
+    handleSearch();
+  }
+};
+
+// --- 6. Bus Search & API Relay ---
+async function handleSearch() {
+  const fromSelect = document.getElementById('select-from');
+  const toSelect = document.getElementById('select-to');
+  const container = document.getElementById('bus-list-container');
+  const countBadge = document.getElementById('bus-count-badge');
+  if (!fromSelect || !toSelect || !container) return;
+
+  const fromCode = fromSelect.value;
+  const toCode = toSelect.value;
+
+  if (countBadge) countBadge.innerText = "શોધી રહ્યું છે...";
+  container.innerHTML = `
+    <div class="p-8 text-center bg-white rounded-3xl shadow-sm border border-rose-100 my-4 animate-pulse">
+      <div class="inline-block p-4 rounded-full bg-rose-50 text-rose-600 mb-3">
+        <svg class="animate-spin h-8 w-8 text-rose-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <p class="text-rose-900 font-bold text-base">જીએસઆરટીસી લાઈવ સર્વર સાથે કનેક્ટ કરી રહ્યું છે...</p>
+      <p class="text-xs text-slate-500 mt-1">અસલ બસ શિડ્યુલ અને GPS સ્થિતિ ચકાસી રહ્યા છીએ</p>
+    </div>
+  `;
+
+  try {
+    const resp = await fetch(`/api/buses?from=${encodeURIComponent(fromCode)}&to=${encodeURIComponent(toCode)}`);
+    if (!resp.ok) throw new Error('API request failed');
+    const buses = await resp.json();
+    renderBusList(buses);
+  } catch (err) {
+    console.error('Error fetching buses:', err);
+    container.innerHTML = `
+      <div class="p-8 text-center bg-white rounded-3xl shadow-sm border border-rose-200 my-4">
+        <div class="text-4xl mb-2">🚌</div>
+        <p class="text-slate-700 font-medium">${t('noBusesFound')}</p>
+        <button onclick="handleSearch()" class="mt-4 px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold">ફરી પ્રયાસ કરો</button>
+      </div>
+    `;
+    if (countBadge) countBadge.innerText = "0 બસો";
+  }
+}
+
+// Render Bus Schedule Cards
+function renderBusList(buses) {
+  const container = document.getElementById('bus-list-container');
+  const countBadge = document.getElementById('bus-count-badge');
+  if (!container) return;
+
+  if (countBadge) {
+    countBadge.innerText = `${buses.length} બસો ઉપલબ્ધ`;
+  }
+
+  if (buses.length === 0) {
+    container.innerHTML = `
+      <div class="p-8 text-center bg-white rounded-3xl shadow-sm border border-rose-200 my-4">
+        <div class="text-4xl mb-2">🚌</div>
+        <p class="text-slate-600 font-medium">${t('noBusesFound')}</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = buses.map((bus) => {
+    let serviceBadgeColor = 'bg-rose-100 text-rose-800 border-rose-300';
+    if (bus.serviceClass.includes('GURJAR')) serviceBadgeColor = 'bg-amber-100 text-amber-900 border-amber-300';
+    else if (bus.serviceClass.includes('LOCAL')) serviceBadgeColor = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+    else if (bus.serviceClass.includes('LUX') || bus.serviceClass.includes('SLP')) serviceBadgeColor = 'bg-indigo-100 text-indigo-900 border-indigo-300';
+
+    return `
+      <div class="bg-white rounded-3xl p-4 shadow-sm border border-rose-100/80 hover:shadow-md transition-all relative overflow-hidden group">
+        <!-- Top Row: Route Name & Badge -->
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${serviceBadgeColor}">
+                ${bus.serviceClass}
+              </span>
+              <span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                ${bus.vehicleNo}
+              </span>
+              ${bus.statusClass === 'running' ? `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                  ઓન રોડ
+                </span>
+              ` : ''}
+            </div>
+            <h3 class="text-sm font-extrabold text-slate-800 mt-1 leading-snug">
+              ${bus.routeName}
+            </h3>
+          </div>
+          <span class="text-[11px] font-bold px-2 py-1 bg-rose-50 text-rose-700 rounded-lg whitespace-nowrap">
+            ${bus.status}
+          </span>
+        </div>
+
+        <!-- Middle: Time & Path -->
+        <div class="bg-rose-50/50 rounded-2xl p-3 my-2 border border-rose-100/60">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-[10px] uppercase font-bold text-slate-500">${t('departs')}</p>
+              <p class="text-lg font-black text-slate-900">${bus.departureTime}</p>
+              <p class="text-xs font-semibold text-slate-600 truncate max-w-[110px]">${bus.fromStation}</p>
+            </div>
+            <div class="flex flex-col items-center px-2">
+              <span class="text-[10px] font-bold text-rose-600 mb-0.5">${bus.duration}</span>
+              <div class="w-24 h-0.5 bg-rose-300 relative flex items-center justify-center">
+                <span class="w-2 h-2 rounded-full bg-rose-600 absolute -top-[3px]"></span>
+              </div>
+              <span class="text-[9px] text-slate-500 font-medium mt-0.5">${bus.totalStops} સ્ટોપ</span>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] uppercase font-bold text-slate-500">${t('arrives')}</p>
+              <p class="text-lg font-black text-slate-900">${bus.arrivalTime}</p>
+              <p class="text-xs font-semibold text-slate-600 truncate max-w-[110px]">${bus.toStation}</p>
+            </div>
+          </div>
+
+          ${bus.intermediateStops && bus.intermediateStops.length > 2 ? `
+            <div class="mt-2 pt-2 border-t border-rose-100 text-[11px] text-slate-600 flex items-center gap-1 truncate">
+              <span class="font-bold text-rose-700">વાયા:</span>
+              <span>${bus.intermediateStops.slice(1, -1).slice(0, 3).join(', ')}</span>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Bottom Action Bar -->
+        <div class="flex items-center justify-between pt-1">
+          <div class="text-xs text-slate-500 font-medium">
+            <span>ડેપો: <strong class="text-slate-700">${bus.depotName}</strong></span>
+          </div>
+          <button onclick="startLiveTrack('${bus.tripCode}')"
+            class="px-4 py-2 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white rounded-xl text-xs font-bold shadow-sm shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            ${t('trackBusBtn')}
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// --- 7. DEDICATED BUS TRACKING MAP & ON-ROAD ENGINE ---
+function initTrackMapIfNeeded() {
+  const mapElement = document.getElementById('bus-track-map');
+  if (!mapElement || trackMapInstance) return;
+
+  trackMapInstance = L.map('bus-track-map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([20.90, 70.65], 11);
+
+  // Official Google Maps Tile Layers
+  const googleRoadmap = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '© Google Maps'
+  }).addTo(trackMapInstance);
+
+  const googleSatellite = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '© Google Maps'
+  });
+
+  const googleTraffic = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '© Google Maps'
+  });
+
+  L.control.layers({
+    '🗺️ ગૂગલ મેપ': googleRoadmap,
+    '🛰️ સેટેલાઇટ': googleSatellite,
+    '🚦 ટ્રાફિક': googleTraffic
+  }, null, { position: 'topright' }).addTo(trackMapInstance);
+
+  // Zoom listener: preserve user's zoom level strictly
+  trackMapInstance.on('zoomend', () => {
+    trackMapUserZoom = trackMapInstance.getZoom();
+  });
+
+  // Auto-follow toggle button
+  const autoFollowBtn = document.getElementById('btn-toggle-autofollow');
+  const autoFollowLabel = document.getElementById('label-autofollow');
+  if (autoFollowBtn) {
+    autoFollowBtn.addEventListener('click', () => {
+      isAutoFollowEnabled = !isAutoFollowEnabled;
+      if (autoFollowLabel) {
+        autoFollowLabel.innerText = isAutoFollowEnabled ? 'ઓટો-ફોલો ચાલુ' : 'ઓટો-ફોલો બંધ';
+      }
+      autoFollowBtn.classList.toggle('bg-rose-100', !isAutoFollowEnabled);
+      if (isAutoFollowEnabled && currentBusLocation) {
+        trackMapInstance.panTo([currentBusLocation.lat, currentBusLocation.lng], { animate: true });
+      }
+    });
+  }
+
+  // Center on Bus Button
+  const centerBusBtn = document.getElementById('btn-center-bus');
+  if (centerBusBtn) {
+    centerBusBtn.addEventListener('click', () => {
+      if (currentBusLocation && trackMapInstance) {
+        const curZoom = (trackMapUserZoom !== null && trackMapUserZoom >= 13) ? trackMapUserZoom : 14;
+        trackMapInstance.setView([currentBusLocation.lat, currentBusLocation.lng], curZoom, { animate: true });
+        trackMapUserZoom = curZoom;
+      } else {
+        alert('હાલ કોઈ બસ ટ્રેકિંગ ચાલુ નથી. કૃપા કરીને પહેલા કોઈપણ બસનું "ટ્રેક કરો" બટન દબાવો.');
+      }
+    });
+  }
+}
+
+// --- 8. DEDICATED STATION EXPLORER & NEARBY MAP ---
+function initStationsMapIfNeeded() {
+  const mapElement = document.getElementById('stations-map');
+  if (!mapElement || stationsMapInstance) return;
+
+  stationsMapInstance = L.map('stations-map', {
+    zoomControl: true,
+    attributionControl: false
+  }).setView([20.90, 70.65], 9);
+
+  const googleRoadmap = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '© Google Maps'
+  }).addTo(stationsMapInstance);
+
+  const googleSatellite = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '© Google Maps'
+  });
+
+  const googleTraffic = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+    subdomains: ['0', '1', '2', '3'],
+    maxZoom: 20,
+    attribution: '© Google Maps'
+  });
+
+  L.control.layers({
+    '🗺️ ગૂગલ મેપ': googleRoadmap,
+    '🛰️ સેટેલાઇટ': googleSatellite,
+    '🚦 ટ્રાફિક': googleTraffic
+  }, null, { position: 'topright' }).addTo(stationsMapInstance);
+
+  // Plot All Station Pins on Stations Map
+  stationMarkersOnMap = [];
+  STATIONS.forEach((st) => {
+    const pin = L.circleMarker([st.lat, st.lng], {
+      radius: 7,
+      color: '#be123c',
+      fillColor: '#ffffff',
+      fillOpacity: 1,
+      weight: 2.5
+    }).addTo(stationsMapInstance);
+
+    pin.bindTooltip(st.nameGu, { direction: 'top', offset: [0, -6] });
+    pin.on('click', () => openStationModal(st.id));
+    stationMarkersOnMap.push({ station: st, marker: pin });
+  });
+
+  // Station Search Bar handler
+  const searchInput = document.getElementById('input-station-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) return;
+      const found = STATIONS.find(s =>
+        s.nameGu.toLowerCase().includes(q) ||
+        s.nameEn.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        s.code.toLowerCase().includes(q)
+      );
+      if (found && stationsMapInstance) {
+        stationsMapInstance.setView([found.lat, found.lng], 13, { animate: true });
+        const markerObj = stationMarkersOnMap.find(m => m.station.id === found.id);
+        if (markerObj) {
+          markerObj.marker.openTooltip();
+        }
+      }
+    });
+  }
+
+  // "📍 મારું નજીકનું સ્ટેશન શોધો" Feature
+  const findNearestBtn = document.getElementById('btn-find-nearest-station');
+  if (findNearestBtn) {
+    findNearestBtn.addEventListener('click', () => {
+      findNearestBtn.innerHTML = '<span>⏳</span> શોધી રહ્યું છે...';
+      if (!navigator.geolocation) {
+        findNearestBtn.innerHTML = '<span>📍</span> મારું નજીકનું સ્ટેશન શોધો';
+        openStationModal('VRL');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          findNearestBtn.innerHTML = '<span>📍</span> મારું નજીકનું સ્ટેશન શોધો';
+          const { latitude, longitude } = pos.coords;
+
+          let closest = null;
+          let minDist = Infinity;
+          STATIONS.forEach((st) => {
+            const d = Math.hypot(st.lat - latitude, st.lng - longitude);
+            if (d < minDist) {
+              minDist = d;
+              closest = st;
+            }
+          });
+
+          if (closest) {
+            stationsMapInstance.setView([closest.lat, closest.lng], 13, { animate: true });
+            const markerObj = stationMarkersOnMap.find(m => m.station.id === closest.id);
+            if (markerObj) markerObj.marker.openTooltip();
+            openStationModal(closest.id);
+          }
+        },
+        (err) => {
+          findNearestBtn.innerHTML = '<span>📍</span> મારું નજીકનું સ્ટેશન શોધો';
+          stationsMapInstance.setView([20.9010, 70.3629], 13, { animate: true });
+          openStationModal('VRL');
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    });
+  }
+
+  // Close Station Modal handler
+  const closeBtn = document.getElementById('btn-close-station-modal');
+  const modal = document.getElementById('station-bus-modal');
+  if (closeBtn && modal) {
+    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  }
+}
+
+// Realistic 3D GSRTC Bus Marker HTML
+function createRealisticBusIcon(busNo, bearing, speed) {
+  const roundedBearing = Math.round(bearing || 0);
+  const roundedSpeed = Math.round(speed || 0);
+
+  return L.divIcon({
+    className: 'custom-bus-container',
+    html: `
+      <div class="relative flex flex-col items-center pointer-events-auto">
+        <!-- Floating Live Speed & Bus Number Pill -->
+        <div class="bg-slate-900/90 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap shadow-lg border border-rose-500 mb-1 flex items-center gap-1 transform -translate-y-1">
+          <span class="w-1.5 h-1.5 rounded-full ${roundedSpeed > 0 ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}"></span>
+          <span>${busNo}</span>
+          <span class="text-rose-400 font-mono">${roundedSpeed} km/h</span>
+        </div>
+
+        <!-- 3D Rotating Bus with Headlight Beam -->
+        <div class="relative" style="transform: rotate(${roundedBearing}deg); transition: transform 0.6s ease-out;">
+          ${roundedSpeed > 0 ? '<div class="headlight-beam"></div>' : ''}
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-700 via-rose-600 to-rose-500 shadow-2xl flex items-center justify-center border-2 border-white transform hover:scale-110 transition-transform">
+            <img src="./icons/bus-marker.png" alt="Bus" class="w-6 h-6 object-contain" />
+          </div>
+        </div>
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22]
+  });
+}
+
+// Fetch or generate highway coordinates for a segment between two stops
+async function getRoadSegmentCoords(p1, p2) {
+  const s1 = (p1.placeCode || p1.placeName || '').toUpperCase().trim();
+  const s2 = (p2.placeCode || p2.placeName || '').toUpperCase().trim();
+  const key1 = `${s1}-${s2}`;
+  const key2 = `${s2}-${s1}`;
+  const cacheKey = `${p1.lat},${p1.lng}_${p2.lat},${p2.lng}`;
+
+  if (roadCache[cacheKey]) return roadCache[cacheKey];
+
+  if (HIGHWAY_ROAD_SECTORS[key1]) {
+    roadCache[cacheKey] = HIGHWAY_ROAD_SECTORS[key1];
+    return HIGHWAY_ROAD_SECTORS[key1];
+  }
+  if (HIGHWAY_ROAD_SECTORS[key2]) {
+    const rev = [...HIGHWAY_ROAD_SECTORS[key2]].reverse();
+    roadCache[cacheKey] = rev;
+    return rev;
+  }
+
+  // Query OSRM routing along actual physical highway
+  if (p1.lat && p1.lng && p2.lat && p2.lng) {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?overview=full&geometries=geojson`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(2200) });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.routes && data.routes[0]?.geometry?.coordinates) {
+          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          if (coords.length >= 2) {
+            roadCache[cacheKey] = coords;
+            return coords;
+          }
+        }
+      }
+    } catch (e) {
+      // Fallback to curved interpolation
+    }
+  }
+
+  // Fallback: smooth interpolated waypoints
+  const fallback = interpolateSegment([p1.lat, p1.lng], [p2.lat, p2.lng], 6);
+  roadCache[cacheKey] = fallback;
+  return fallback;
+}
+
+function interpolateSegment(p1, p2, steps) {
+  const result = [];
+  for (let s = 0; s <= steps; s++) {
+    const r = s / steps;
+    result.push([p1[0] + (p2[0] - p1[0]) * r, p1[1] + (p2[1] - p1[1]) * r]);
+  }
+  return result;
+}
+
+// Generate On-Road Coordinates connecting all intermediate stops
+async function generateOnRoadCoordinates(points) {
+  activeRouteSegments = [];
+  const fullRoad = [];
+  if (!points || points.length < 2) return [];
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const seg = await getRoadSegmentCoords(points[i], points[i + 1]);
+    activeRouteSegments.push(seg);
+    if (i === 0) {
+      fullRoad.push(...seg);
+    } else {
+      fullRoad.push(...seg.slice(1));
+    }
+  }
+
+  return fullRoad;
+}
+
+// Mathematical On-Road Projection: Snaps the bus strictly onto the highway geometry
+function getPositionOnRoad(curSegIdx, segmentRatio, points) {
+  if (!activeRouteSegments || activeRouteSegments.length === 0) {
+    const p1 = points[curSegIdx] || points[0];
+    const p2 = points[Math.min(curSegIdx + 1, points.length - 1)] || p1;
+    const r = Math.max(0, Math.min(1, segmentRatio != null ? segmentRatio : 0.5));
+    const lat = p1.lat + (p2.lat - p1.lat) * r;
+    const lng = p1.lng + (p2.lng - p1.lng) * r;
+    const heading = calculateBearing(p1.lat, p1.lng, p2.lat, p2.lng);
+    return { lat, lng, heading };
+  }
+
+  const segIdx = Math.max(0, Math.min(curSegIdx, activeRouteSegments.length - 1));
+  const segmentCoords = activeRouteSegments[segIdx];
+  if (!segmentCoords || segmentCoords.length < 2) {
+    const p1 = points[segIdx] || points[0];
+    return { lat: p1.lat, lng: p1.lng, heading: 0 };
+  }
+
+  // Calculate cumulative distances along this segment's highway vertices
+  const cumDists = [0];
+  let totalDist = 0;
+  for (let j = 0; j < segmentCoords.length - 1; j++) {
+    const d = getCoordsDist(segmentCoords[j], segmentCoords[j + 1]);
+    totalDist += d;
+    cumDists.push(totalDist);
+  }
+
+  if (totalDist === 0) {
+    return { lat: segmentCoords[0][0], lng: segmentCoords[0][1], heading: 0 };
+  }
+
+  const ratio = Math.max(0, Math.min(1, segmentRatio != null ? segmentRatio : 0.5));
+  const targetDist = ratio * totalDist;
+
+  // Find the exact subsegment containing targetDist
+  let subIdx = 0;
+  for (let j = 0; j < cumDists.length - 1; j++) {
+    if (targetDist >= cumDists[j] && targetDist <= cumDists[j + 1]) {
+      subIdx = j;
+      break;
+    }
+  }
+
+  const dSpan = cumDists[subIdx + 1] - cumDists[subIdx];
+  const subRatio = dSpan > 0 ? (targetDist - cumDists[subIdx]) / dSpan : 0;
+
+  const v1 = segmentCoords[subIdx];
+  const v2 = segmentCoords[subIdx + 1];
+
+  const lat = v1[0] + (v2[0] - v1[0]) * subRatio;
+  const lng = v1[1] + (v2[1] - v1[1]) * subRatio;
+  const heading = calculateBearing(v1[0], v1[1], v2[0], v2[1]);
+
+  return { lat, lng, heading };
+}
+
+// Start Live Real-Time Tracking for Trip Code
+async function startLiveTrack(tripCode) {
+  if (activeTrackingTripCode !== tripCode) {
+    activeTrackingTripCode = tripCode;
+    isInitialTripTrack = true;
+    trackMapUserZoom = null;
+    if (routeLine && trackMapInstance) { trackMapInstance.removeLayer(routeLine); routeLine = null; }
+    if (busMarker && trackMapInstance) { trackMapInstance.removeLayer(busMarker); busMarker = null; }
+    stopMarkers.forEach(m => trackMapInstance && trackMapInstance.removeLayer(m));
+    stopMarkers = [];
+  }
+
+  switchTab('track');
+
+  if (liveTrackingInterval) clearInterval(liveTrackingInterval);
+
+  // Initial load
+  await updateTrackingOnMap(tripCode, false);
+
+  // Automatic real-time GPS location update every 8 seconds (without page reload)
+  liveTrackingInterval = setInterval(() => {
+    if (activeTrackingTripCode === tripCode) {
+      updateTrackingOnMap(tripCode, true);
+    }
+  }, 8000);
+}
+
+async function updateTrackingOnMap(tripCode, isSilent = false) {
+  const card = document.getElementById('live-bus-card');
+  if (!isSilent && card) {
+    card.innerHTML = `
+      <div class="bg-white rounded-3xl p-4 shadow-lg border border-rose-200 text-center animate-pulse">
+        <p class="text-sm font-bold text-rose-800">જીએસઆરટીસી જીપીએસ સાથે કનેક્ટ કરી રહ્યું છે...</p>
+      </div>
+    `;
+  }
+
+  try {
+    const resp = await fetch(`/api/track?tripCode=${encodeURIComponent(tripCode)}`);
+    if (!resp.ok) throw new Error('Tracking fetch failed');
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    renderTrackingView(data, isSilent);
+  } catch (err) {
+    console.error('Track error:', err);
+    if (!isSilent && card) {
+      card.innerHTML = `
+        <div class="bg-white rounded-3xl p-4 shadow-lg border border-rose-200 text-center">
+          <p class="text-sm font-bold text-slate-700">આ બસનું લાઈવ લોકેશન હાલ ઉપલબ્ધ નથી.</p>
+        </div>
+      `;
+    }
+  }
+}
+
+async function renderTrackingView(trackData, isSilent = false) {
+  initTrackMapIfNeeded();
+  if (!trackMapInstance) return;
+
+  const points = trackData.routePoints || [];
+  if (points.length < 2) return;
+  const loc = trackData.currentLocation;
+
+  if (isInitialTripTrack || !routeLine) {
+    // --- 1. INITIAL LOAD FOR THIS TRIP ---
+    if (routeLine) trackMapInstance.removeLayer(routeLine);
+    if (busMarker) trackMapInstance.removeLayer(busMarker);
+    stopMarkers.forEach(m => trackMapInstance.removeLayer(m));
+    stopMarkers = [];
+
+    // Build Highway Road Polyline on Google Maps
+    activeRoadCoordinates = await generateOnRoadCoordinates(points);
+
+    routeLine = L.polyline(activeRoadCoordinates, {
+      color: '#be123c',
+      weight: 6,
+      opacity: 0.9,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(trackMapInstance);
+
+    // Add Station Markers along the Route
+    points.forEach((pt, idx) => {
+      const isTerminus = (idx === 0 || idx === points.length - 1);
+      const m = L.circleMarker([pt.lat, pt.lng], {
+        radius: isTerminus ? 8 : 5,
+        color: isTerminus ? '#be123c' : '#fda4af',
+        fillColor: isTerminus ? '#fff' : '#be123c',
+        fillOpacity: 1,
+        weight: 2.5
+      }).addTo(trackMapInstance);
+
+      m.bindTooltip(`${pt.placeName} (${pt.time})`, { direction: 'top' });
+      stopMarkers.push(m);
+    });
+
+    // Compute exact on-road position
+    const roadPos = getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
+    currentBusLocation = roadPos;
+
+    // Create 3D Animated Bus Marker
+    busMarker = L.marker([roadPos.lat, roadPos.lng], {
+      icon: createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed),
+      zIndexOffset: 1000
+    }).addTo(trackMapInstance);
+
+    // Fit route bounds ONLY on initial load
+    trackMapInstance.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+    setTimeout(() => {
+      trackMapUserZoom = trackMapInstance.getZoom();
+    }, 400);
+
+    isInitialTripTrack = false;
+
+  } else {
+    // --- 2. AUTOMATIC BACKGROUND LOCATION UPDATE ---
+    // User requirement: "મેપમાં જેટલું જુમિંગ કરેલું હોય એટલું જ રહેવું જોઈએ"
+    // Strictly preserve user zoom level - NEVER reset or fitBounds!
+    const effectiveZoom = (trackMapUserZoom !== null) ? trackMapUserZoom : trackMapInstance.getZoom();
+
+    // Compute exact on-road position along physical road geometry
+    const roadPos = getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
+    currentBusLocation = roadPos;
+
+    if (busMarker) {
+      busMarker.setLatLng([roadPos.lat, roadPos.lng]);
+      busMarker.setIcon(createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed));
+    } else {
+      busMarker = L.marker([roadPos.lat, roadPos.lng], {
+        icon: createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed),
+        zIndexOffset: 1000
+      }).addTo(trackMapInstance);
+    }
+
+    // Auto-follow: pan smoothly to bus while maintaining exact user zoom
+    if (isAutoFollowEnabled) {
+      trackMapInstance.panTo([roadPos.lat, roadPos.lng], { animate: true, duration: 1.0 });
+      if (trackMapInstance.getZoom() !== effectiveZoom) {
+        trackMapInstance.setZoom(effectiveZoom);
+      }
+    }
+  }
+
+  // Update Live Bus Card
+  const card = document.getElementById('live-bus-card');
+  if (card) {
+    const progressPercent = Math.round(trackData.progressRatio * 100);
+    card.innerHTML = `
+      <div class="bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-rose-200">
+        <!-- Route & Status Badge -->
+        <div class="flex items-start justify-between gap-2 mb-2">
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                ${trackData.className}
+              </span>
+              <span class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-300">
+                ${trackData.vehicleNo}
+              </span>
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                લાઈવ ટ્રેકિંગ
+              </span>
+            </div>
+            <h3 class="text-sm font-black text-slate-900 mt-1">
+              ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
+            </h3>
+          </div>
+          <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+            ${loc.speed > 0 ? `${Math.round(loc.speed)} કિમી/કલાક` : 'પ્લેટફોર્મ પર'}
+          </span>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="my-2.5">
+          <div class="flex justify-between text-[11px] font-bold text-slate-600 mb-1">
+            <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop}</strong></span>
+            <span>આગળનું: <strong class="text-rose-700">${loc.nextStop} (${loc.etaNext})</strong></span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+            <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
+          </div>
+        </div>
+
+        <!-- Contact & Blessing Footer -->
+        <div class="pt-2 border-t border-rose-100 flex items-center justify-between text-xs">
+          ${trackData.conductorNo ? `
+            <a href="tel:${trackData.conductorNo}" class="inline-flex items-center gap-1 text-slate-700 font-semibold hover:text-rose-700">
+              <svg class="w-3.5 h-3.5 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/>
+              </svg>
+              કંડક્ટર: ${trackData.conductorNo}
+            </a>
+          ` : `
+            <span class="text-slate-500 font-medium">ડેપો: <strong>${trackData.depotName}</strong></span>
+          `}
+          <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+            શુભ યાત્રા મિત્તલ 💖
+          </span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// --- 9. Station Modal & Digital Station Board ---
+async function openStationModal(stId) {
+  const modal = document.getElementById('station-bus-modal');
+  const titleEl = document.getElementById('station-modal-title');
+  const listEl = document.getElementById('station-modal-buses');
+  if (!modal || !titleEl || !listEl) return;
+
+  const st = STATIONS.find((s) => s.id === stId || s.code === stId);
+  const stName = currentLang === 'gu' ? st?.nameGu : st?.nameEn;
+  titleEl.innerText = `📍 ${stName || stId}`;
+
+  listEl.innerHTML = `
+    <div class="p-6 text-center text-slate-500">
+      <div class="inline-block animate-spin h-6 w-6 border-2 border-rose-600 border-t-transparent rounded-full mb-2"></div>
+      <p class="text-xs font-bold text-rose-800">આવનારી બસો લોડ થઈ રહી છે...</p>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+
+  try {
+    const resp = await fetch(`/api/station-buses?stationCode=${encodeURIComponent(stId)}`);
+    const buses = await resp.json();
+
+    if (!buses || buses.length === 0) {
+      listEl.innerHTML = `<div class="p-4 text-center text-slate-500 bg-rose-50 rounded-2xl">આ સ્ટેશન માટે હાલ કોઈ બસ નિર્ધારિત નથી.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = buses.map((bus) => `
+      <div class="bg-rose-50/50 p-3 rounded-2xl border border-rose-100 flex items-center justify-between gap-3">
+        <div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-800 rounded-md">
+              ${bus.serviceClass}
+            </span>
+            <span class="text-[10px] font-mono font-bold text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+              ${bus.vehicleNo}
+            </span>
+          </div>
+          <h4 class="text-xs font-extrabold text-slate-800 mt-1">${bus.routeName}</h4>
+          <p class="text-[11px] text-slate-500 mt-0.5">
+            સમય: <strong class="text-slate-900">${bus.time}</strong> • ${bus.platform} • <span class="text-emerald-700 font-bold">${bus.status}</span>
+          </p>
+        </div>
+        <button onclick="trackFromModal('${bus.tripCode}')" class="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-rose-700 text-white text-xs font-bold rounded-xl shadow-sm whitespace-nowrap active:scale-95">
+          ટ્રેક કરો
+        </button>
+      </div>
+    `).join('');
+  } catch (err) {
+    listEl.innerHTML = `<div class="p-4 text-center text-rose-700">બસો લોડ કરવામાં સમસ્યા આવી. ફરી પ્રયાસ કરો.</div>`;
+  }
+}
+
+window.trackFromModal = function(tripCode) {
+  const modal = document.getElementById('station-bus-modal');
+  if (modal) modal.classList.add('hidden');
+  startLiveTrack(tripCode);
+};
+
+// Station Digital Board
+function initStationBoardDropdown() {
+  const select = document.getElementById('select-board-station');
+  if (!select) return;
+
+  const sorted = [...STATIONS].sort((a, b) =>
+    (currentLang === 'gu' ? a.nameGu : a.nameEn).localeCompare(currentLang === 'gu' ? b.nameGu : b.nameEn)
+  );
+
+  select.innerHTML = sorted.map((st) => {
+    const label = currentLang === 'gu' ? st.nameGu : st.nameEn;
+    return `<option value="${st.id}">${label}</option>`;
+  }).join('');
+
+  select.value = 'VRL';
+  select.addEventListener('change', renderStationBoard);
+}
+
+async function renderStationBoard() {
+  const select = document.getElementById('select-board-station');
+  const container = document.getElementById('board-list-container');
+  if (!select || !container) return;
+
+  const stId = select.value || 'VRL';
+  container.innerHTML = `
+    <div class="p-6 text-center text-slate-500">
+      <div class="inline-block animate-spin h-6 w-6 border-2 border-rose-600 border-t-transparent rounded-full mb-2"></div>
+      <p class="text-xs font-bold text-rose-800">ડિજિટલ બોર્ડ અપડેટ થઈ રહ્યું છે...</p>
+    </div>
+  `;
+
+  try {
+    const resp = await fetch(`/api/station-buses?stationCode=${encodeURIComponent(stId)}`);
+    const buses = await resp.json();
+
+    if (!buses || buses.length === 0) {
+      container.innerHTML = `<div class="p-4 text-center text-slate-500 bg-white rounded-2xl border border-rose-200">આ સ્ટેશન માટે હાલ કોઈ બસ નિર્ધારિત નથી.</div>`;
+      return;
+    }
+
+    container.innerHTML = buses.map((bus) => `
+      <div class="bg-white p-4 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between gap-3 hover:border-rose-300 transition-colors">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              ${bus.vehicleNo}
+            </span>
+            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+              ${bus.serviceClass}
+            </span>
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              ${bus.status}
+            </span>
+          </div>
+          <h4 class="text-sm font-extrabold text-slate-800">${bus.routeName}</h4>
+          <p class="text-xs text-slate-500 mt-0.5">
+            સ્થળ: <strong>${bus.destination}</strong> • ${bus.platform}
+          </p>
+        </div>
+        <div class="text-right flex flex-col items-end gap-1.5">
+          <span class="text-lg font-black text-rose-800 font-mono">${bus.time}</span>
+          <button onclick="startLiveTrack('${bus.tripCode}')" class="px-3 py-1.5 bg-gradient-to-r from-rose-600 to-rose-700 text-white text-xs font-bold rounded-xl shadow-sm active:scale-95">
+            ટ્રેક કરો
+          </button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = `<div class="p-4 text-center text-rose-700">બોર્ડ ડેટા મેળવવામાં ભૂલ થઈ.</div>`;
+  }
+}
+
+// Helpline Data
+const HELPLINES = [
+  { nameGu: 'વેરાવળ એસ.ટી. કંટ્રોલ રૂમ', nameEn: 'Veraval ST Control Room', phone: '02876-220130' },
+  { nameGu: 'કોડીનાર એસ.ટી. ડેપો', nameEn: 'Kodinar ST Depot', phone: '02795-221235' },
+  { nameGu: 'ઉના એસ.ટી. બસ સ્ટેશન', nameEn: 'Una ST Bus Station', phone: '02875-221444' },
+  { nameGu: 'જૂનાગઢ ડિવિઝન કંટ્રોલ રૂમ', nameEn: 'Junagadh Division Control', phone: '0285-2630303' },
+  { nameGu: 'અમદાવાદ સેન્ટ્રલ હેલ્પલાઈન', nameEn: 'Ahmedabad Central Helpline', phone: '1800-233-6655' }
+];
+
+function initHelpline() {
+  const container = document.getElementById('helpline-list-container');
+  if (!container) return;
+  container.innerHTML = HELPLINES.map(h => `
+    <div class="bg-white p-4 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between">
+      <div>
+        <h4 class="text-sm font-bold text-slate-800">${currentLang === 'gu' ? h.nameGu : h.nameEn}</h4>
+        <p class="text-xs text-rose-700 font-mono font-bold mt-0.5">${h.phone}</p>
+      </div>
+      <a href="tel:${h.phone}" class="p-2.5 bg-rose-50 text-rose-700 rounded-xl hover:bg-rose-100 active:scale-95 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+        </svg>
+      </a>
+    </div>
+  `).join('');
+}

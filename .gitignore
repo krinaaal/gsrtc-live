@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+cache/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# APK & decompile artifacts
+*.apk
+*.dex
+places.xml
+wsdl.xml
+res_service.wsdl
+res/
+assets/

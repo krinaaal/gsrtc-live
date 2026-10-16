@@ -1,0 +1,2 @@
+# GSRTC Live is lightweight and uses Python standard library.
+# No external dependencies required.
