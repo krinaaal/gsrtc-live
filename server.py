@@ -15,7 +15,10 @@ import os
 import sys
 import time
 import math
+import threading
 from datetime import datetime, timezone, timedelta
+
+SERVER_START_TIME = time.time()
 
 # Indian Standard Time (IST, UTC+05:30) - All GSRTC bus operations run strictly on IST
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -409,7 +412,16 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        if path == '/api/highway-roads':
+        if path == '/api/health':
+            self.send_json({
+                'status': 'healthy',
+                'service': 'GSRTC Live (Mittal💗)',
+                'time': get_ist_now().strftime('%Y-%m-%d %H:%M:%S IST'),
+                'uptime': round(time.time() - SERVER_START_TIME, 1)
+            })
+            return
+
+        elif path == '/api/highway-roads':
             self.send_json(HIGHWAY_ROADS_DATA)
             return
 
@@ -1027,7 +1039,47 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
     daemon_threads = True
 
+def start_keep_alive_thread():
+    """
+    Keeps Render cloud web service awake 24/7 by periodically pinging the endpoint.
+    Render automatically spins down free instances after 15 minutes of zero HTTP traffic.
+    A self-heartbeat ping every 8 minutes guarantees the instance stays continuously online.
+    """
+    def pinger():
+        time.sleep(20)  # Wait for server to bind and start listening
+        ext_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("KEEP_ALIVE_URL")
+        print(f"[KeepAlive] Heartbeat thread active. External URL: {ext_url or 'localhost'}")
+
+        while True:
+            try:
+                targets = []
+                if ext_url:
+                    base = ext_url.rstrip('/')
+                    targets.append(f"{base}/api/health")
+                targets.append(f"http://127.0.0.1:{PORT}/api/health")
+
+                for target in targets:
+                    req = urllib.request.Request(
+                        target,
+                        headers={'User-Agent': 'GSRTC-KeepAlive/2.0 (Mittal💗)'}
+                    )
+                    ctx = ssl.create_default_context()
+                    ctx.check_hostname = False
+                    ctx.verify_mode = ssl.CERT_NONE
+                    with urllib.request.urlopen(req, context=ctx, timeout=12) as resp:
+                        pass
+                print(f"[KeepAlive] Render heartbeat ping successful at {get_ist_now().strftime('%H:%M:%S')}")
+            except Exception as e:
+                print(f"[KeepAlive] Heartbeat ping notice: {e}")
+
+            # Ping every 8 minutes (480 seconds)
+            time.sleep(480)
+
+    t = threading.Thread(target=pinger, daemon=True, name="RenderKeepAliveThread")
+    t.start()
+
 def run_server():
+    start_keep_alive_thread()
     with ThreadedTCPServer(("", PORT), GSRTCRequestHandler) as httpd:
         print(f"[Server] GSRTC Live Server running on http://localhost:{PORT}")
         httpd.serve_forever()

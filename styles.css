@@ -212,20 +212,51 @@ input, textarea, select {
   100% { background-position: 200% 0; }
 }
 
-/* Celebration Floating Hearts Animation (Post-Splash) */
+/* ============================================================
+   GRAND CELEBRATION HEARTS & FIREWORK CANNON ANIMATIONS
+   ============================================================ */
 @keyframes floatUpCelebration {
   0% {
-    transform: translateY(105vh) scale(0.5) rotate(-15deg);
+    transform: translateY(105vh) translateX(0) scale(0.5) rotate(-15deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(75vh) translateX(var(--sway-1, 18px)) scale(1.05) rotate(12deg);
+  }
+  60% {
+    transform: translateY(45vh) translateX(var(--sway-2, -18px)) scale(0.95) rotate(-10deg);
+  }
+  85% {
+    opacity: 0.9;
+    transform: translateY(18vh) translateX(var(--sway-3, 12px)) scale(1.1) rotate(15deg);
+  }
+  100% {
+    transform: translateY(-15vh) translateX(var(--sway-4, -8px)) scale(0.7) rotate(-25deg);
+    opacity: 0;
+  }
+}
+
+@keyframes cannonBurstCelebration {
+  0% {
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
     opacity: 0;
   }
   15% {
-    opacity: 0.95;
+    opacity: 1;
+    transform: translate(calc(var(--burst-x, 0px) * 0.45), calc(var(--burst-y, -60vh) * 0.45)) scale(1.25) rotate(var(--rot-1, 45deg));
+  }
+  45% {
+    transform: translate(var(--burst-x, 0px), var(--burst-y, -60vh)) scale(1) rotate(var(--rot-2, 90deg));
   }
   75% {
     opacity: 0.9;
+    transform: translate(calc(var(--burst-x, 0px) * 1.1), calc(var(--burst-y, -60vh) + 15vh)) scale(0.9) rotate(var(--rot-3, 160deg));
   }
   100% {
-    transform: translateY(-15vh) scale(1.2) rotate(30deg);
+    transform: translate(calc(var(--burst-x, 0px) * 1.2), calc(var(--burst-y, -60vh) + 40vh)) scale(0.5) rotate(var(--rot-4, 240deg));
     opacity: 0;
   }
 }
@@ -234,11 +265,21 @@ input, textarea, select {
   position: fixed;
   bottom: 0;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 99999;
   user-select: none;
   animation: floatUpCelebration linear forwards;
   will-change: transform, opacity;
-  filter: drop-shadow(0 2px 8px rgba(225, 29, 72, 0.4));
+  filter: drop-shadow(0 3px 10px rgba(225, 29, 72, 0.45));
+}
+
+.celebration-heart-cannon {
+  position: fixed;
+  pointer-events: none;
+  z-index: 99999;
+  user-select: none;
+  animation: cannonBurstCelebration cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 4px 14px rgba(244, 63, 94, 0.6));
 }
 
 /* Custom Bus Marker Container: Zero-offset anchor with visible overflow */

@@ -279,38 +279,118 @@ function getCoordsDist(c1, c2) {
 let hideSplashScreenFn = null;
 let heartsAlreadyLaunched = false;
 
-function launchCelebrationHearts() {
-  if (heartsAlreadyLaunched) return;
-  heartsAlreadyLaunched = true;
+function triggerGrandCelebrationBurst(originX = null, originY = null) {
+  const heartEmojis = ['❤️', '💖', '💕', '💓', '💗', '💘', '💝', '💞', '💟', '💌', '🌸', '✨', '🌟', '🥰', '🌹'];
+  let container = document.getElementById('celebration-hearts-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'celebration-hearts-container';
+    container.className = 'fixed inset-0 pointer-events-none z-[99999] overflow-hidden select-none';
+    document.body.appendChild(container);
+  }
 
-  const heartEmojis = ['❤️', '💖', '💕', '💓', '💗', '💘', '💝', '💞', '✨'];
-  const count = 38;
-  const container = document.createElement('div');
-  container.id = 'celebration-hearts-container';
-  container.className = 'fixed inset-0 pointer-events-none z-[9999] overflow-hidden select-none';
-  document.body.appendChild(container);
+  const isCustomPoint = originX != null && originY != null;
+  const startX = isCustomPoint ? originX : window.innerWidth / 2;
+  const startY = isCustomPoint ? originY : window.innerHeight;
 
-  for (let i = 0; i < count; i++) {
+  // 1. Cannon Fireworks Blast (shooting outwards in arcs)
+  const cannonCount = 75;
+  for (let i = 0; i < cannonCount; i++) {
     const el = document.createElement('div');
-    el.className = 'celebration-heart';
+    el.className = 'celebration-heart-cannon';
     el.innerText = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
 
-    const left = Math.random() * 92 + 4; // 4% to 96%
-    const size = Math.random() * 12 + 13; // 13px to 25px
-    const duration = Math.random() * 1.8 + 2.5; // 2.5s to 4.3s
-    const delay = Math.random() * 1.3; // 0s to 1.3s
+    const angle = (Math.random() * 140 + 20) * (Math.PI / 180);
+    const velocity = Math.random() * 320 + 200;
+    const burstX = Math.cos(angle) * velocity * (Math.random() > 0.5 ? 1 : -1) * 1.35;
+    const burstY = -(Math.sin(angle) * velocity + 160);
 
-    el.style.left = `${left}%`;
+    const size = Math.random() * 16 + 15; // 15px to 31px
+    const duration = Math.random() * 1.2 + 2.2; // 2.2s to 3.4s
+    const delay = Math.random() * 0.35;
+
+    el.style.left = `${startX}px`;
+    el.style.top = `${startY}px`;
     el.style.fontSize = `${size}px`;
+    el.style.setProperty('--burst-x', `${burstX}px`);
+    el.style.setProperty('--burst-y', `${burstY}px`);
+    el.style.setProperty('--rot-1', `${(Math.random() - 0.5) * 90}deg`);
+    el.style.setProperty('--rot-2', `${(Math.random() - 0.5) * 180}deg`);
+    el.style.setProperty('--rot-3', `${(Math.random() - 0.5) * 270}deg`);
+    el.style.setProperty('--rot-4', `${(Math.random() - 0.5) * 360}deg`);
     el.style.animationDuration = `${duration}s`;
     el.style.animationDelay = `${delay}s`;
 
     container.appendChild(el);
+    setTimeout(() => el.remove(), (duration + delay + 0.3) * 1000);
   }
 
+  // 2. Romantic Screen-Wide Floating Stream (swaying upwards)
+  const floatCount = 65;
+  for (let i = 0; i < floatCount; i++) {
+    const el = document.createElement('div');
+    el.className = 'celebration-heart';
+    el.innerText = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+
+    const left = Math.random() * 94 + 3; // 3% to 97%
+    const size = Math.random() * 14 + 14; // 14px to 28px
+    const duration = Math.random() * 2.2 + 2.8; // 2.8s to 5.0s
+    const delay = Math.random() * 1.5;
+
+    el.style.left = `${left}%`;
+    el.style.fontSize = `${size}px`;
+    el.style.setProperty('--sway-1', `${(Math.random() - 0.5) * 45}px`);
+    el.style.setProperty('--sway-2', `${(Math.random() - 0.5) * 55}px`);
+    el.style.setProperty('--sway-3', `${(Math.random() - 0.5) * 40}px`);
+    el.style.setProperty('--sway-4', `${(Math.random() - 0.5) * 30}px`);
+    el.style.animationDuration = `${duration}s`;
+    el.style.animationDelay = `${delay}s`;
+
+    container.appendChild(el);
+    setTimeout(() => el.remove(), (duration + delay + 0.3) * 1000);
+  }
+}
+
+function launchCelebrationHearts() {
+  if (heartsAlreadyLaunched) return;
+  heartsAlreadyLaunched = true;
+
+  // Wave 1: Immediate Cannon Fireworks Blast (140 hearts)
+  triggerGrandCelebrationBurst();
+
+  // Wave 2: Left and right celebratory cannons at 380ms (150 hearts)
   setTimeout(() => {
-    container.remove();
-  }, 5500);
+    triggerGrandCelebrationBurst(window.innerWidth * 0.22, window.innerHeight);
+    triggerGrandCelebrationBurst(window.innerWidth * 0.78, window.innerHeight);
+  }, 380);
+
+  // Wave 3: Grand cascading finale at 850ms (140 hearts)
+  setTimeout(() => {
+    triggerGrandCelebrationBurst(window.innerWidth * 0.5, window.innerHeight);
+  }, 850);
+}
+
+function setupCelebrationTapListeners() {
+  const romanticTargets = [
+    document.querySelector('header'),
+    document.querySelector('.love-banner'),
+    document.getElementById('love-notes-marquee')
+  ];
+  romanticTargets.forEach(el => {
+    if (el) {
+      el.addEventListener('click', (e) => {
+        triggerGrandCelebrationBurst(e.clientX, e.clientY);
+      });
+    }
+  });
+}
+
+function startKeepAliveHeartbeat() {
+  setInterval(() => {
+    fetch('/api/health')
+      .then(r => r.json())
+      .catch(() => {});
+  }, 120000); // Heartbeat every 2 minutes while page is active
 }
 
 function loadHighwayRoads() {
@@ -367,6 +447,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initShareApp();
   initHelpline();
   initPnrTracking();
+  setupCelebrationTapListeners();
+  startKeepAliveHeartbeat();
 
   // Initial bus search (Veraval to Kodinar)
   handleSearch();
