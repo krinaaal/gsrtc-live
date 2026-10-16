@@ -1,10 +1,11 @@
-const CACHE_NAME = 'gsrtc-live-v12';
+const CACHE_NAME = 'gsrtc-live-v13';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './styles.css',
   './app.js',
+  './Logo2.png',
   './Logo.jpeg',
   './icons/icon-72.png',
   './icons/icon-192.png',
