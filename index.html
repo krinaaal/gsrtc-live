@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html lang="gu">
+<html lang="gu" translate="no" class="notranslate">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Mittal💗 - GSRTC Live</title>
 
+  <!-- Prevent Translation Popups Completely -->
   <meta name="google" content="notranslate">
+  <meta name="googlebot" content="notranslate">
+  <meta http-equiv="Content-Language" content="gu">
   <meta name="format-detection" content="telephone=no">
-  <link rel="preload" as="image" href="./Logo2.png">
+  <link rel="preload" as="image" href="./Logo2.png?v=3">
 
   <!-- PWA Metadata -->
   <link rel="manifest" href="./manifest.json">
@@ -16,7 +19,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Mittal💗">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
-  <link rel="icon" type="image/png" href="./Logo2.png">
+  <link rel="icon" type="image/png" href="./Logo2.png?v=3">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -35,7 +38,7 @@
     <div class="relative mb-5">
       <div class="absolute -inset-4 bg-rose-500/30 rounded-full blur-2xl animate-pulse"></div>
       <div class="relative w-28 h-28 rounded-3xl bg-white p-1.5 shadow-2xl ring-4 ring-rose-400/60 overflow-hidden logo-heartbeat">
-        <img src="./Logo2.png" alt="Mittal💗" class="w-full h-full object-cover rounded-2xl">
+        <img src="./Logo2.png?v=3" alt="Mittal💗" class="w-full h-full object-cover rounded-2xl">
       </div>
     </div>
 
@@ -62,7 +65,7 @@
   <header class="glass-header sticky top-0 z-40 px-4 py-3 flex items-center justify-between border-b border-rose-900">
     <div class="flex items-center gap-2.5">
       <div class="w-10 h-10 rounded-2xl bg-white p-0.5 shadow-md flex items-center justify-center overflow-hidden border border-rose-300 ring-2 ring-rose-400/40">
-        <img src="./Logo2.png" alt="Mittal💗" class="w-full h-full object-cover rounded-xl">
+        <img src="./Logo2.png?v=3" alt="Mittal💗" class="w-full h-full object-cover rounded-xl">
       </div>
       <div>
         <h1 id="app-title" class="text-base font-extrabold tracking-tight leading-tight flex items-center gap-1 text-white">
@@ -450,15 +453,20 @@
       <button id="btn-close-install-modal" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-rose-100 hover:bg-rose-200 text-rose-700 flex items-center justify-center font-bold text-xs">✕</button>
 
       <div class="w-16 h-16 rounded-2xl bg-white p-1 shadow-md border border-rose-200 mx-auto mb-3 overflow-hidden">
-        <img src="./Logo2.png" alt="Mittal💗" class="w-full h-full object-cover rounded-xl">
+        <img src="./Logo2.png?v=3" alt="Mittal💗" class="w-full h-full object-cover rounded-xl">
       </div>
 
       <h3 class="text-base font-extrabold text-center text-slate-900 mb-0.5">
         Mittal💗 એપ ઇન્સ્ટોલ કરો
       </h3>
-      <p class="text-[11px] text-center text-rose-600 font-semibold mb-4">
+      <p class="text-[11px] text-center text-rose-600 font-semibold mb-3">
         ઇન્ટરનેટ વગર અને ૧ ક્લિકમાં ઓપન કરવા માટે
       </p>
+
+      <!-- Notice for WhatsApp/In-app browser users -->
+      <div class="mb-3 p-2.5 bg-rose-50/80 rounded-2xl border border-rose-200 text-[11px] text-rose-900 font-medium">
+        <span>💡 <strong>વોટ્સએપથી ખોલ્યું હોય તો:</strong> ઉપર જમણી બાજુ <strong>૩ ટપકાં (⋮)</strong> દબાવીને <strong>'Open in Chrome'</strong> પસંદ કરો જેથી ઇન્સ્ટોલ બટન કામ કરશે.</span>
+      </div>
 
       <div class="space-y-2.5 text-xs">
         <!-- Android One-Click Button -->

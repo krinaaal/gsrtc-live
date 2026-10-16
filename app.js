@@ -330,9 +330,10 @@ function initShareApp() {
   if (!shareBtn) return;
 
   shareBtn.addEventListener('click', async () => {
+    const shareText = `Mittal💗 - GSRTC લાઈવ બસ ટ્રેકિંગ એપ 🚌💕\nફોનમાં ઇન્સ્ટોલ કરવા માટે આ લિંક Chrome અથવા Safari બ્રાઉઝરમાં ખોલો:`;
     const shareData = {
       title: 'Mittal💗 - GSRTC Live Tracker',
-      text: 'GSRTC અસલ લાઈવ બસ ટ્રેકિંગ • પ્યારી મિત્તલ માટે સમર્પિત 💕',
+      text: shareText,
       url: window.location.href
     };
 
@@ -344,8 +345,8 @@ function initShareApp() {
       }
     } else {
       try {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('એપ લિંક કોપી થઈ ગઈ છે! તમે WhatsApp પર મિત્તલ સાથે શેર કરી શકો છો 💕');
+        await navigator.clipboard.writeText(`${shareText}\n${window.location.href}`);
+        alert('એપ લિંક કોપી થઈ ગઈ છે! તમે WhatsApp પર મિત્તલ અથવા અન્ય સાથે શેર કરી શકો છો 💕 (Chrome માં ખોલવા જણાવવું)');
       } catch (e) {
         prompt('આ લિંક કોપી કરીને WhatsApp પર શેર કરો:', window.location.href);
       }
