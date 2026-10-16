@@ -1,7 +1,7 @@
 {
-  "name": "GSRTC Live 💖 Krinal & Mittal Special Edition",
-  "short_name": "GSRTC Live ❤️",
-  "description": "ક્રીનલ તરફથી પ્યારી મિત્તલ માટે ખાસ બનાવેલી લાઈવ બસ ટ્રેકિંગ એપ્લિકેશન",
+  "name": "Mittal💗 - GSRTC Live Tracker",
+  "short_name": "Mittal💗",
+  "description": "ક્રીનલ તરફથી પ્યારી મિત્તલ માટે સમર્પિત લાઈવ બસ ટ્રેકિંગ એપ્લિકેશન",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait-primary",

@@ -143,8 +143,8 @@ const LOVE_NOTES = [
 // --- 4. Translations & i18n ---
 const I18N = {
   gu: {
-    appTitle: 'GSRTC લાઈવ 💖 ક્રીનલ & મિત્તલ',
-    appSubtitle: 'ગુજરાત એસ.ટી. અસલ લાઈવ ટ્રેકિંગ • પત્ની મિત્તલ માટે સમર્પિત',
+    appTitle: 'Mittal💗',
+    appSubtitle: 'ક્રીનલ ❤️ મિત્તલ લાઈવ બસ ટ્રેકિંગ',
     tabSearch: 'બસ શોધો',
     tabTrack: 'બસ ટ્રેકિંગ',
     tabStations: 'નજીકનું સ્ટેશન',
@@ -166,8 +166,8 @@ const I18N = {
     noBusesFound: 'આ રૂટ માટે હાલ કોઈ બસ ઉપલબ્ધ નથી.'
   },
   en: {
-    appTitle: 'GSRTC Live 💖 Krinal & Mittal',
-    appSubtitle: 'Official Gujarat ST Real Tracking • Dedicated to Wife Mittal',
+    appTitle: 'Mittal💗',
+    appSubtitle: 'Krinal ❤️ Mittal Live Bus Tracker',
     tabSearch: 'Search Bus',
     tabTrack: 'Bus Tracking',
     tabStations: 'Nearby Station',
