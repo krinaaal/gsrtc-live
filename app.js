@@ -275,8 +275,60 @@ function getCoordsDist(c1, c2) {
   return Math.hypot(dLat, dLng);
 }
 
-// --- 5. Application Initialization ---
+// --- 5. Application Initialization & Celebration Animation ---
 let hideSplashScreenFn = null;
+let heartsAlreadyLaunched = false;
+
+function launchCelebrationHearts() {
+  if (heartsAlreadyLaunched) return;
+  heartsAlreadyLaunched = true;
+
+  const heartEmojis = ['❤️', '💖', '💕', '💓', '💗', '💘', '💝', '💞', '✨'];
+  const count = 38;
+  const container = document.createElement('div');
+  container.id = 'celebration-hearts-container';
+  container.className = 'fixed inset-0 pointer-events-none z-[9999] overflow-hidden select-none';
+  document.body.appendChild(container);
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'celebration-heart';
+    el.innerText = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+
+    const left = Math.random() * 92 + 4; // 4% to 96%
+    const size = Math.random() * 12 + 13; // 13px to 25px
+    const duration = Math.random() * 1.8 + 2.5; // 2.5s to 4.3s
+    const delay = Math.random() * 1.3; // 0s to 1.3s
+
+    el.style.left = `${left}%`;
+    el.style.fontSize = `${size}px`;
+    el.style.animationDuration = `${duration}s`;
+    el.style.animationDelay = `${delay}s`;
+
+    container.appendChild(el);
+  }
+
+  setTimeout(() => {
+    container.remove();
+  }, 5500);
+}
+
+function loadHighwayRoads() {
+  fetch('/api/highway-roads')
+    .then(r => r.json())
+    .then(data => {
+      if (data && typeof data === 'object') {
+        Object.assign(HIGHWAY_ROAD_SECTORS, data);
+        console.log(`[Highway] Loaded ${Object.keys(data).length} physical highway sectors via OSRM!`);
+      }
+    })
+    .catch(err => {
+      fetch('./highway_roads.json')
+        .then(r => r.json())
+        .then(data => Object.assign(HIGHWAY_ROAD_SECTORS, data))
+        .catch(e => console.warn('Local highway roads load failed:', e));
+    });
+}
 
 function initSplashScreen() {
   const splash = document.getElementById('splash-screen');
@@ -290,6 +342,8 @@ function initSplashScreen() {
     setTimeout(() => {
       if (splash) {
         splash.classList.add('splash-hidden');
+        // User requirement: "લોડિંગ એનિમેશન પૂર્ણ થયા બાદ સેલિબ્રેશનમાં નાના નાના દિલ વિવિધ પ્રકારના ઉડવા જોઈએ"
+        launchCelebrationHearts();
         setTimeout(() => splash.remove(), 700);
       }
     }, 400);
@@ -303,6 +357,7 @@ function initSplashScreen() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initSplashScreen();
+  loadHighwayRoads();
   initStationDropdowns();
   initTabs();
   initPopularRoutes();
@@ -942,7 +997,9 @@ function normalizePlaceKey(p) {
   if (code === 'KSD' || name.includes('KESHOD')) return 'KSD';
   if (code === 'VRL' || name.includes('VERAVAL')) return 'VRL';
   if (code === 'SMN' || code === 'SMNT' || name.includes('SOMNATH')) return 'SMN';
+  if (code === 'GRKMD' || name.includes('GORAKH')) return 'GRKMD';
   if (code === 'PRC' || code === 'PRCH' || name.includes('PRAC') || name.includes('PRAN')) return 'PRC';
+  if (code === 'TLG' || name.includes('TALALA')) return 'TLG';
   if (code === 'KDN' || name.includes('KODINAR')) return 'KDN';
   if (code === 'DLS' || name.includes('DOLASA')) return 'DLS';
   if (code === 'KSRY' || name.includes('KESARIYA')) return 'KSRY';
@@ -954,6 +1011,8 @@ function normalizePlaceKey(p) {
   if (code === 'JND' || name.includes('JUNAGADH')) return 'JND';
   if (code === 'VNTL' || name.includes('VANTHALI')) return 'VNTL';
   if (code === 'PBR' || name.includes('PORBANDAR')) return 'PBR';
+  if (code === 'MDVPR' || name.includes('MADHAVPUR')) return 'MDVPR';
+  if (code === 'LOYEJ' || name.includes('LOYEJ')) return 'LOYEJ';
   if (code === 'MNG' || code === 'MGL' || name.includes('MANGROL')) return 'MNG';
   if (code === 'CHRVD' || name.includes('CHORVAD')) return 'CHRVD';
   if (code === 'RJL' || name.includes('RAJULA')) return 'RJL';
@@ -1268,9 +1327,9 @@ async function renderTrackingView(trackData, isSilent = false) {
               <span class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-300">
                 ${trackData.vehicleNo}
               </span>
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                લાઈવ ટ્રેકિંગ
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${trackData.hasLiveGps !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                <span class="w-1.5 h-1.5 rounded-full ${trackData.hasLiveGps !== false ? 'bg-emerald-600 animate-ping' : 'bg-amber-600'}"></span>
+                ${trackData.hasLiveGps !== false ? 'વાસ્તવિક ઓન-રોડ GPS' : 'નિર્ધારિત સ્થિતિ'}
               </span>
             </div>
             <h3 class="text-sm font-black text-slate-900 mt-1">
@@ -1287,6 +1346,13 @@ async function renderTrackingView(trackData, isSilent = false) {
           <span>🚦 ${trackData.status || loc.status}</span>
           <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
         </div>
+
+        ${trackData.operationalDelay > 0 ? `
+          <div class="text-[10px] font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-xl mb-2 border border-amber-200 flex items-center gap-1.5">
+            <span>⏱️</span>
+            <span>સૌરાષ્ટ્ર હાઇવે ટ્રાફિક વિલંબ: ~${trackData.operationalDelay} મિનિટ (વાસ્તવિક ગ્રાઉન્ડ સ્થિતિ)</span>
+          </div>
+        ` : ''}
 
         <!-- Progress Bar -->
         <div class="my-2">

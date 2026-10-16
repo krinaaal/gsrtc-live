@@ -211,3 +211,33 @@ input, textarea, select {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+
+/* Celebration Floating Hearts Animation (Post-Splash) */
+@keyframes floatUpCelebration {
+  0% {
+    transform: translateY(105vh) scale(0.5) rotate(-15deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-15vh) scale(1.2) rotate(30deg);
+    opacity: 0;
+  }
+}
+
+.celebration-heart {
+  position: fixed;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 9999;
+  user-select: none;
+  animation: floatUpCelebration linear forwards;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 2px 8px rgba(225, 29, 72, 0.4));
+}
+
