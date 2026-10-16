@@ -1,5 +1,5 @@
 # GSRTC Live - Real-Time Bus Tracker 🚌💖
-### Dedicated to Mittal with Endless Love from Krinal (ક્રીનલ ❤️ મિત્તલ)
+### Dedicated to Mittal with Endless Love from Krinal (ક્રિનલ ❤️ મિત્તલ)
 
 A modern, fast, mobile-first Progressive Web App (PWA) that connects directly to the official **GSRTC (Gujarat State Road Transport Corporation)** backend web services for 100% authentic live tracking, route schedules, and digital station boards.
 

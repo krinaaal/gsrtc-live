@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 GSRTC Live Clone Backend Server & API Proxy
-Built with love for Krinal ❤️ Mittal (ક્રીનલ ❤️ મિત્તલ)
+Built with love for Krinal ❤️ Mittal (ક્રિનલ ❤️ મિત્તલ)
 Connects directly to official GSRTC WebServices (gsrtc.in) backend
 """
 

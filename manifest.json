@@ -2,7 +2,7 @@
   "id": "mittal-gsrtc-live-app",
   "name": "Mittal💗 - GSRTC Live Tracker",
   "short_name": "Mittal💗",
-  "description": "ક્રીનલ તરફથી પ્યારી મિત્તલ માટે સમર્પિત લાઈવ બસ ટ્રેકિંગ એપ્લિકેશન",
+  "description": "ક્રિનલ તરફથી પ્યારી મિત્તલ માટે સમર્પિત લાઈવ બસ ટ્રેકિંગ એપ્લિકેશન",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
