@@ -13,7 +13,14 @@ import os
 import sys
 import time
 import math
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# Indian Standard Time (IST, UTC+05:30) - All GSRTC bus operations run strictly on IST
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def get_ist_now():
+    """Returns current datetime in Indian Standard Time (IST), unaffected by cloud/server UTC clock."""
+    return datetime.now(IST)
 
 import gsrtc_client
 
@@ -355,7 +362,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         candidates = list(dict.fromkeys(priority_trips + corridor_trips + general_trips))[:250]
         stops_map = gsrtc_client.batch_get_trip_stops(candidates, max_workers=16)
 
-        now = datetime.now()
+        now = get_ist_now()
         cur_mins = now.hour * 60 + now.minute
 
         results = []
@@ -466,7 +473,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         candidates = list(dict.fromkeys(priority_trips + corridor_trips))[:250]
         stops_map = gsrtc_client.batch_get_trip_stops(candidates, max_workers=16)
 
-        now = datetime.now()
+        now = get_ist_now()
         cur_mins = now.hour * 60 + now.minute
 
         results = []
@@ -540,7 +547,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         if not stops:
             return {'error': 'Route stops not found for trip'}
 
-        now = datetime.now()
+        now = get_ist_now()
         cur_mins = now.hour * 60 + now.minute + (now.second / 60.0)
 
         # Resolve GPS coordinates for each stop
@@ -736,7 +743,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
     def get_active_vehicles(self):
         """Returns sample active live vehicles driving on road right now for 1-click test chips."""
         trips = gsrtc_client.get_live_trips()
-        now = datetime.now()
+        now = get_ist_now()
         cur_mins = now.hour * 60 + now.minute
 
         candidates = [t for t in trips if any(k in t for k in ['VRL', 'UNA', 'KDN', 'JND', 'PBR', 'RJT', 'DIU', 'SMN', 'UPT'])]
