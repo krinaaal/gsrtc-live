@@ -1254,14 +1254,27 @@ async function trackCorridorBus(corridorType) {
   const curM = now.getHours() * 60 + now.getMinutes();
 
   if (corridorType === 'JNDUNA') {
-    if (curM < 12 * 60 + 30) targetTripCode = '1200JNDUNAEXP51';
-    else if (curM < 15 * 60 + 30) targetTripCode = '1500JNDUNAEXP51';
-    else targetTripCode = '0700JNDUNAEXP51';
+    if (curM >= 6 * 60 && curM < 11 * 60 + 45) {
+      targetTripCode = '0700JNDUNAEXP51';
+    } else if (curM >= 11 * 60 + 45 && curM < 16 * 60 + 30) {
+      targetTripCode = '1200JNDUNAEXP51';
+    } else if (curM >= 16 * 60 + 30 && curM < 21 * 60) {
+      targetTripCode = '1500JNDUNAEXP51';
+    } else {
+      targetTripCode = '0700JNDUNAEXP51';
+    }
   } else if (corridorType === 'UPTUNA') {
-    targetTripCode = '1315UPTUNAEXP51';
+    if (curM >= 4 * 60 + 30 && curM < 11 * 60) {
+      targetTripCode = '0500UNAUPTLOCAL';
+    } else {
+      targetTripCode = '1315UPTUNAEXP51';
+    }
   } else if (corridorType === 'PBRDIU') {
-    if (curM < 10 * 60) targetTripCode = '0545PBRDIUEXP51';
-    else targetTripCode = '1415PBRDIUEXP51';
+    if (curM >= 5 * 60 && curM < 12 * 60) {
+      targetTripCode = '0545PBRDIUEXP51';
+    } else {
+      targetTripCode = '1415PBRDIUEXP51';
+    }
   }
   await startLiveTrack(targetTripCode);
 }
