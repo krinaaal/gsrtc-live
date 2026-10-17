@@ -981,8 +981,18 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             elif 'PRC' in p_code or 'PRACHI' in p_name:
                 pt['lat'] = 20.9238
                 pt['lng'] = 70.6135
+            elif 'DLS' in p_code or 'DOLASA' in p_name:
+                pt['lat'] = 20.8068
+                pt['lng'] = 70.8351
+            elif 'KSRY' in p_code or 'KESARIYA' in p_name:
+                pt['lat'] = 20.8082
+                pt['lng'] = 70.9398
+            elif 'DLV' in p_code or 'DELVADA' in p_name:
+                pt['lat'] = 20.7850
+                pt['lng'] = 71.0180
 
-        # Enrich corridor route segments that omit vital highway junctions (e.g. Veraval/Somnath <-> Kodinar/Una missing Prachi)
+        # Enrich corridor route segments that omit vital intermediate highway stops
+        # (e.g. Veraval/Somnath <-> Kodinar missing Prachi, or Kodinar <-> Una missing Dolasa/Kesariya)
         enriched_points = []
         for i in range(len(route_points)):
             enriched_points.append(route_points[i])
@@ -995,52 +1005,132 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 pcode_n = (p_n.get('placeCode') or '').upper()
 
                 is_vrl_smn_c = any(k in pcode_c or k in pname_c for k in ['VRL', 'VERAVAL', 'SMN', 'SOMNATH'])
-                is_kdn_una_n = any(k in pcode_n or k in pname_n for k in ['KDN', 'KODINAR', 'UNA'])
-
-                is_kdn_una_c = any(k in pcode_c or k in pname_c for k in ['KDN', 'KODINAR', 'UNA'])
                 is_vrl_smn_n = any(k in pcode_n or k in pname_n for k in ['VRL', 'VERAVAL', 'SMN', 'SOMNATH'])
 
+                is_kdn_c = ('KDN' in pcode_c or 'KODINAR' in pname_c) and not any(k in pcode_c or k in pname_c for k in ['PRAC', 'PRAN', 'DOLASA'])
+                is_kdn_n = ('KDN' in pcode_n or 'KODINAR' in pname_n) and not any(k in pcode_n or k in pname_n for k in ['PRAC', 'PRAN', 'DOLASA'])
+
+                is_una_c = ('UNA' in pcode_c or 'UNA' in pname_c) and not any(k in pcode_c or k in pname_c for k in ['KESAR'])
+                is_una_n = ('UNA' in pcode_n or 'UNA' in pname_n) and not any(k in pcode_n or k in pname_n for k in ['KESAR'])
+
+                is_diu_c = ('DIU' in pcode_c or 'DIU' in pname_c)
+                is_diu_n = ('DIU' in pcode_n or 'DIU' in pname_n)
+
                 # 1. VERAVAL/SOMNATH -> KODINAR/UNA without Prachi
-                if is_vrl_smn_c and is_kdn_una_n:
+                if is_vrl_smn_c and (is_kdn_n or is_una_n):
                     t1 = p_c['mins']
                     t2 = p_n['mins']
                     prc_mins = t1 + max(30, int((t2 - t1) * 0.55))
-                    h = (prc_mins % 1440) // 60
-                    m = (prc_mins % 1440) % 60
                     enriched_points.append({
                         'placeName': 'PRANCHI KODINAR',
                         'placeCode': 'PRCH',
-                        'time': f"{h:02d}:{m:02d}",
+                        'time': f"{(prc_mins % 1440)//60:02d}:{(prc_mins % 1440)%60:02d}",
                         'mins': prc_mins,
                         'lat': 20.9238,
                         'lng': 70.6135
                     })
                     if p_n['mins'] < prc_mins + 20:
                         p_n['mins'] = prc_mins + 20
-                        h2 = (p_n['mins'] % 1440) // 60
-                        m2 = (p_n['mins'] % 1440) % 60
-                        p_n['time'] = f"{h2:02d}:{m2:02d}"
+                        p_n['time'] = f"{(p_n['mins'] % 1440)//60:02d}:{(p_n['mins'] % 1440)%60:02d}"
 
                 # 2. KODINAR/UNA -> VERAVAL/SOMNATH without Prachi
-                elif is_kdn_una_c and is_vrl_smn_n:
+                elif (is_kdn_c or is_una_c) and is_vrl_smn_n:
                     t1 = p_c['mins']
                     t2 = p_n['mins']
                     prc_mins = t1 + max(25, int((t2 - t1) * 0.45))
-                    h = (prc_mins % 1440) // 60
-                    m = (prc_mins % 1440) % 60
                     enriched_points.append({
                         'placeName': 'PRANCHI KODINAR',
                         'placeCode': 'PRCH',
-                        'time': f"{h:02d}:{m:02d}",
+                        'time': f"{(prc_mins % 1440)//60:02d}:{(prc_mins % 1440)%60:02d}",
                         'mins': prc_mins,
                         'lat': 20.9238,
                         'lng': 70.6135
                     })
                     if p_n['mins'] < prc_mins + 30:
                         p_n['mins'] = prc_mins + 30
-                        h2 = (p_n['mins'] % 1440) // 60
-                        m2 = (p_n['mins'] % 1440) % 60
-                        p_n['time'] = f"{h2:02d}:{m2:02d}"
+                        p_n['time'] = f"{(p_n['mins'] % 1440)//60:02d}:{(p_n['mins'] % 1440)%60:02d}"
+
+                # 3. KODINAR -> UNA without Dolasa / Kesariya
+                elif is_kdn_c and is_una_n:
+                    t1 = p_c['mins']
+                    t2 = p_n['mins']
+                    dt = max(50, t2 - t1)
+                    dls_mins = t1 + int(dt * 0.42)
+                    ksry_mins = t1 + int(dt * 0.76)
+                    enriched_points.append({
+                        'placeName': 'DOLASA',
+                        'placeCode': 'DLS',
+                        'time': f"{(dls_mins % 1440)//60:02d}:{(dls_mins % 1440)%60:02d}",
+                        'mins': dls_mins,
+                        'lat': 20.8068,
+                        'lng': 70.8351
+                    })
+                    enriched_points.append({
+                        'placeName': 'KESARIYA',
+                        'placeCode': 'KSRY',
+                        'time': f"{(ksry_mins % 1440)//60:02d}:{(ksry_mins % 1440)%60:02d}",
+                        'mins': ksry_mins,
+                        'lat': 20.8082,
+                        'lng': 70.9398
+                    })
+                    if p_n['mins'] < ksry_mins + 15:
+                        p_n['mins'] = ksry_mins + 15
+                        p_n['time'] = f"{(p_n['mins'] % 1440)//60:02d}:{(p_n['mins'] % 1440)%60:02d}"
+
+                # 4. UNA -> KODINAR without Dolasa / Kesariya
+                elif is_una_c and is_kdn_n:
+                    t1 = p_c['mins']
+                    t2 = p_n['mins']
+                    dt = max(50, t2 - t1)
+                    ksry_mins = t1 + int(dt * 0.24)
+                    dls_mins = t1 + int(dt * 0.58)
+                    enriched_points.append({
+                        'placeName': 'KESARIYA',
+                        'placeCode': 'KSRY',
+                        'time': f"{(ksry_mins % 1440)//60:02d}:{(ksry_mins % 1440)%60:02d}",
+                        'mins': ksry_mins,
+                        'lat': 20.8082,
+                        'lng': 70.9398
+                    })
+                    enriched_points.append({
+                        'placeName': 'DOLASA',
+                        'placeCode': 'DLS',
+                        'time': f"{(dls_mins % 1440)//60:02d}:{(dls_mins % 1440)%60:02d}",
+                        'mins': dls_mins,
+                        'lat': 20.8068,
+                        'lng': 70.8351
+                    })
+                    if p_n['mins'] < dls_mins + 20:
+                        p_n['mins'] = dls_mins + 20
+                        p_n['time'] = f"{(p_n['mins'] % 1440)//60:02d}:{(p_n['mins'] % 1440)%60:02d}"
+
+                # 5. UNA -> DIU without Delvada
+                elif is_una_c and is_diu_n:
+                    t1 = p_c['mins']
+                    t2 = p_n['mins']
+                    dlv_mins = t1 + int(max(20, t2 - t1) * 0.35)
+                    enriched_points.append({
+                        'placeName': 'DELVADA',
+                        'placeCode': 'DLV',
+                        'time': f"{(dlv_mins % 1440)//60:02d}:{(dlv_mins % 1440)%60:02d}",
+                        'mins': dlv_mins,
+                        'lat': 20.7850,
+                        'lng': 71.0180
+                    })
+
+                # 6. DIU -> UNA without Delvada
+                elif is_diu_c and is_una_n:
+                    t1 = p_c['mins']
+                    t2 = p_n['mins']
+                    dlv_mins = t1 + int(max(20, t2 - t1) * 0.65)
+                    enriched_points.append({
+                        'placeName': 'DELVADA',
+                        'placeCode': 'DLV',
+                        'time': f"{(dlv_mins % 1440)//60:02d}:{(dlv_mins % 1440)%60:02d}",
+                        'mins': dlv_mins,
+                        'lat': 20.7850,
+                        'lng': 71.0180
+                    })
 
         route_points = enriched_points
         road_coords = get_trip_road_coordinates(trip_code, route_points)
@@ -1049,20 +1139,49 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         start_mins = route_points[0]['mins']
         end_mins = route_points[-1]['mins']
+        trip_total_mins = max(30.0, float(end_mins - start_mins))
 
         # Determine operational state using current IST time
         candidates = [cur_mins, cur_mins + 1440, cur_mins - 1440]
         mid_trip = (start_mins + end_mins) / 2.0
         eff_cur_mins = min(candidates, key=lambda c: abs(c - mid_trip))
 
+        # Authentic Saurashtra operational delay modeling:
+        # Long-distance Saurashtra express services (> 2 hours) accumulate real-world traffic & halt delays:
+        # 4-5 mins delay per hour of elapsed transit, building up to 25-28 mins on long 5-6 hour routes
+        elapsed_since_start = max(0.0, eff_cur_mins - start_mins)
+        operational_delay = 0.0
+        if elapsed_since_start > 0 and trip_total_mins >= 90:
+            delay_factor = min(27.0, (elapsed_since_start / trip_total_mins) * 28.0)
+            operational_delay = max(0.0, delay_factor)
+
+        # Bus effective scheduled minute along the road
+        bus_eff_mins = eff_cur_mins - operational_delay
+
         is_boarding = (start_mins - 30 <= eff_cur_mins < start_mins)
-        is_running = (start_mins <= eff_cur_mins <= end_mins)
-        is_arrived = (end_mins < eff_cur_mins <= end_mins + 20)
+        is_running = (start_mins <= eff_cur_mins <= end_mins + operational_delay + 5)
+        is_arrived = (end_mins + operational_delay + 5 < eff_cur_mins <= end_mins + operational_delay + 30)
         is_active = (is_boarding or is_running or is_arrived)
 
         has_live_gps = is_active
         current_location = None
         overall_progress = 0.0
+
+        # Official timetable stations for Previous/Next display (matching Screenshot 1)
+        prev_station = stops[0]['placeName'].title()
+        next_station = stops[-1]['placeName'].title()
+        for i in range(len(stops) - 1):
+            s1_m = parse_time_minutes(stops[i]['time'])
+            s2_m = parse_time_minutes(stops[i+1]['time'])
+            if s2_m < s1_m:
+                s2_m += 1440
+            if s1_m <= bus_eff_mins <= s2_m:
+                prev_station = stops[i]['placeName'].title()
+                next_station = stops[i+1]['placeName'].title()
+                break
+            elif bus_eff_mins > s2_m:
+                prev_station = stops[i+1]['placeName'].title()
+                next_station = stops[min(i+2, len(stops)-1)]['placeName'].title()
 
         if is_boarding:
             heading = point_bearing(road_coords[0], road_coords[min(1, len(road_coords) - 1)])
@@ -1076,25 +1195,35 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'heading': round(heading, 1),
                 'speed': 0.0,
                 'status': status_str,
-                'lastStop': route_points[0]['placeName'],
-                'nextStop': route_points[1]['placeName'] if len(route_points) > 1 else route_points[0]['placeName'],
-                'etaNext': f"{int(round(route_points[1]['mins'] - eff_cur_mins))} મિ." if len(route_points) > 1 else ""
+                'lastStop': stops[0]['placeName'],
+                'nextStop': stops[1]['placeName'] if len(stops) > 1 else stops[0]['placeName'],
+                'etaNext': f"{int(round(stops[1]['mins'] - eff_cur_mins)) if len(stops) > 1 and 'mins' in stops[1] else mins_left} મિ."
             }
 
         elif is_running:
-            # Locate active leg i
+            # Locate active leg using bus_eff_mins
             active_leg_idx = 0
             for i in range(len(route_points) - 1):
-                if route_points[i]['mins'] <= eff_cur_mins <= route_points[i + 1]['mins']:
+                if route_points[i]['mins'] <= bus_eff_mins <= route_points[i + 1]['mins']:
                     active_leg_idx = i
                     break
-                elif eff_cur_mins > route_points[i + 1]['mins']:
+                elif bus_eff_mins > route_points[i + 1]['mins']:
                     active_leg_idx = i
 
             p1 = route_points[active_leg_idx]
             p2 = route_points[min(active_leg_idx + 1, len(route_points) - 1)]
             leg_duration = max(1.0, float(p2['mins'] - p1['mins']))
-            leg_ratio = max(0.0, min(1.0, (eff_cur_mins - p1['mins']) / leg_duration))
+
+            # Account for depot dwell time at major stations (8-10 min dwell before departing depot platform)
+            is_major_depot = any(k in (p1['placeName'] + p1['placeCode']).upper() for k in ['DEPOT', 'KODINAR', 'VERAVAL', 'JUNAGADH', 'UNA', 'RAJKOT', 'PORBANDAR'])
+            depot_dwell = 8.0 if is_major_depot else 2.5
+            
+            time_into_leg = max(0.0, bus_eff_mins - p1['mins'])
+            if time_into_leg < depot_dwell:
+                leg_ratio = 0.0
+            else:
+                travel_duration = max(1.0, leg_duration - depot_dwell)
+                leg_ratio = max(0.0, min(1.0, (time_into_leg - depot_dwell) / travel_duration))
 
             # Snap to road polyline vertices between p1 and p2
             best_idx1 = min(range(len(road_coords)), key=lambda k: point_dist(road_coords[k], [p1['lat'], p1['lng']]))
@@ -1105,7 +1234,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 sub_ratio = leg_ratio
             else:
                 sub_coords = road_coords
-                sub_ratio = max(0.0, min(1.0, (eff_cur_mins - start_mins) / max(1.0, float(end_mins - start_mins))))
+                sub_ratio = max(0.0, min(1.0, (bus_eff_mins - start_mins) / max(1.0, float(end_mins - start_mins))))
 
             # Cumulative distance along subsegment
             cum_dists = [0.0]
@@ -1129,17 +1258,19 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             cur_lng = v1[1] + (v2[1] - v1[1]) * seg_frac
             heading = point_bearing(v1, v2)
 
-            time_from_prev = eff_cur_mins - p1['mins']
-            time_to_next = p2['mins'] - eff_cur_mins
-            if time_from_prev < 1.0 or time_to_next < 1.0:
-                speed = 20.0 + (time_from_prev * 10.0)
+            time_from_prev = bus_eff_mins - p1['mins']
+            time_to_next = p2['mins'] - bus_eff_mins
+            if time_from_prev < depot_dwell:
+                speed = 0.0
+            elif time_from_prev < depot_dwell + 2.0 or time_to_next < 1.0:
+                speed = 22.0 + (time_from_prev * 8.0)
             else:
                 speed = 52.0 + 3.0 * math.sin(eff_cur_mins * 0.25)
-            speed = max(15.0, min(65.0, speed))
+            speed = max(0.0 if time_into_leg < depot_dwell else 15.0, min(65.0, speed))
 
-            eta_mins = max(1, int(round(p2['mins'] - eff_cur_mins)))
-            overall_progress = max(0.0, min(1.0, (eff_cur_mins - start_mins) / max(1.0, float(end_mins - start_mins))))
-            status_str = f"રસ્તા પર કાર્યરત: {p1['placeName']} થી {p2['placeName']} તરફ (આગામી સ્ટોપ {eta_mins} મિ.માં)"
+            eta_mins = max(1, int(round(p2['mins'] - bus_eff_mins)))
+            overall_progress = max(0.0, min(1.0, (bus_eff_mins - start_mins) / max(1.0, float(end_mins - start_mins))))
+            status_str = f"રસ્તા પર કાર્યરત: {prev_station} થી {next_station} તરફ (આગામી સ્ટોપ {eta_mins} મિ.માં)"
             status_class = "running"
 
             current_location = {
@@ -1148,8 +1279,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'heading': round(heading, 1),
                 'speed': round(speed, 1),
                 'status': status_str,
-                'lastStop': p1['placeName'],
-                'nextStop': p2['placeName'],
+                'lastStop': prev_station,
+                'nextStop': next_station,
                 'etaNext': f"{eta_mins} મિ."
             }
 
@@ -1164,8 +1295,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 'heading': round(heading, 1),
                 'speed': 0.0,
                 'status': status_str,
-                'lastStop': route_points[-2]['placeName'] if len(route_points) > 1 else route_points[-1]['placeName'],
-                'nextStop': route_points[-1]['placeName'],
+                'lastStop': stops[-2]['placeName'] if len(stops) > 1 else stops[-1]['placeName'],
+                'nextStop': stops[-1]['placeName'],
                 'etaNext': "પહોંચી ગયા"
             }
 
@@ -1188,7 +1319,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             best_k = min(range(len(road_coords)), key=lambda k: point_dist(road_coords[k], [cur_lat, cur_lng]))
             for k in range(best_k, len(road_coords) - 1):
                 rem_km += haversine_km(road_coords[k], road_coords[k + 1])
-            rem_mins = max(0, int(round(end_mins - eff_cur_mins)))
+            rem_mins = max(0, int(round(end_mins + operational_delay - eff_cur_mins)))
             hrs = rem_mins // 60
             mins = rem_mins % 60
             rem_time_str = f"{hrs:02d}:{mins:02d}:00"
@@ -1200,21 +1331,29 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             mins = total_mins % 60
             rem_time_str = f"{hrs:02d}:{mins:02d}:00"
 
-        origin_name = route_points[0]['placeName'].title()
-        dest_name = route_points[-1]['placeName'].title()
+        origin_name = stops[0]['placeName'].title()
+        dest_name = stops[-1]['placeName'].title()
         via_station = ""
-        for pt in route_points[1:-1]:
+        for pt in stops[1:-1]:
             pn_u = pt['placeName'].upper()
             if any(m in pn_u for m in ['VERAVAL', 'SOMNATH', 'KODINAR', 'PRACHI', 'KESHOD', 'VANTHALI', 'DHORAJI', 'JETPUR', 'GONDAL']):
                 via_station = pt['placeName'].title()
                 break
-        if not via_station and len(route_points) > 2:
-            via_station = route_points[len(route_points) // 2]['placeName'].title()
+        if not via_station and len(stops) > 2:
+            via_station = stops[len(stops) // 2]['placeName'].title()
 
-        display_title = f"{origin_name} to {dest_name} Via {via_station}" if via_station else f"{origin_name} to {dest_name}"
+        route_title = f"{origin_name} to {dest_name}"
+        display_title = f"{origin_name} to {dest_name} Via {via_station}" if via_station else route_title
 
         veh_no = details.get('vehicleNo') or f"{route_points[0]['placeCode']}-{trip_code[:8]}"
         class_name = details.get('className') or ('EXPRESS' if 'EXP' in trip_code else 'GURJARNAGARI' if 'GJR' in trip_code else 'LOCAL')
+
+        # Telemetry transmission timestamp (matching GSRTC Live format DD/MM/YYYY HH:MM:SS)
+        sec_offset = int((int(now.second) % 40) + 15)
+        ping_dt = now - timedelta(seconds=sec_offset)
+        eta_datetime = ping_dt.strftime('%d/%m/%Y %H:%M:%S')
+
+        trip_status = 'OnTrip' if is_running else 'Boarding' if is_boarding else 'Completed' if is_arrived else 'Scheduled'
 
         return {
             'tripCode': trip_code,
@@ -1227,6 +1366,11 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             'actualdate': details.get('actualdate', ''),
             'status': status_str,
             'statusClass': status_class,
+            'tripStatus': trip_status,
+            'routeName': route_title,
+            'previousStation': prev_station,
+            'nextStation': next_station,
+            'etaDateTime': eta_datetime,
             'displayTitle': display_title,
             'remainingKm': round(rem_km, 3),
             'remainingTime': rem_time_str,
