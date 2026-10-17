@@ -38,6 +38,15 @@ def point_bearing(p1, p2):
     angle = math.degrees(math.atan2(d_lng, d_lat))
     return (angle + 360) % 360
 
+def haversine_km(c1, c2):
+    """Calculates great-circle distance between two [lat, lng] points in kilometers."""
+    lat1, lon1 = math.radians(c1[0]), math.radians(c1[1])
+    lat2, lon2 = math.radians(c2[0]), math.radians(c2[1])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
+    return 2 * 6371.0 * math.asin(math.sqrt(max(0.0, min(1.0, a))))
+
 import gsrtc_client
 
 PORT = int(os.environ.get("PORT", 8080))
@@ -631,6 +640,19 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 last_stop = stops[-1]['placeName']
                 route_name = f"{first_stop} - {last_stop}"
 
+                origin_name = stops[0]['placeName'].title()
+                dest_name = stops[-1]['placeName'].title()
+                from_name = stops[from_idx]['placeName'].title()
+                to_name = stops[to_idx]['placeName'].title()
+
+                if from_idx > 0:
+                    display_title = f"{origin_name} to {dest_name} Via {from_name}"
+                elif len(stops) > 2:
+                    mid_st = stops[len(stops) // 2]['placeName'].title()
+                    display_title = f"{origin_name} to {dest_name} Via {mid_st}"
+                else:
+                    display_title = f"{origin_name} to {dest_name}"
+
                 trip_s_mins = parse_time_minutes(stops[0]['time'])
                 trip_e_mins = parse_time_minutes(stops[-1]['time'])
                 if trip_e_mins < trip_s_mins:
@@ -639,17 +661,40 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 cand_t = min([cur_mins, cur_mins + 1440, cur_mins - 1440], key=lambda c: abs(c - mid_t))
                 is_bus_active = (trip_s_mins - 30 <= cand_t <= trip_e_mins + 20)
 
+                loc_hint = ""
                 if is_bus_active:
                     if trip_s_mins - 30 <= cand_t < trip_s_mins:
                         status = f"પ્લેટફોર્મ પર બોર્ડિંગ ({int(trip_s_mins - cand_t)} મિ.માં ઉપડશે)"
                         statusClass = "boarding"
+                        loc_hint = f"ડેપો પ્લેટફોર્મ પર ઉપસ્થિત ({stops[0]['placeName']})"
                     else:
                         status = "ઓન-રોડ લાઈવ GPS સક્રિય"
                         statusClass = "running"
+                        if cand_t < dep_mins:
+                            mins_until = max(1, int(round(dep_mins - cand_t)))
+                            cur_leg = ""
+                            for k in range(len(stops) - 1):
+                                t1 = parse_time_minutes(stops[k]['time'])
+                                t2 = parse_time_minutes(stops[k + 1]['time'])
+                                if t2 < t1: t2 += 1440
+                                if t1 <= cand_t <= t2:
+                                    cur_leg = f"{stops[k]['placeName']} થી {stops[k + 1]['placeName']}"
+                                    break
+                            if cur_leg:
+                                loc_hint = f"હાલ {cur_leg} વચ્ચે ({from_name} પહોંચવામાં ~{mins_until} મિ. બાકી)"
+                            else:
+                                loc_hint = f"હાલ {from_name} તરફ રવાના (~{mins_until} મિ.માં આવશે)"
+                        else:
+                            loc_hint = f"{from_name} ક્રોસ થઈ ગઈ છે ({to_name} તરફ રવાના)"
+                else:
+                    loc_hint = f"નિર્ધારિત સમય: {dep_time}"
 
                 results.append({
                     'tripCode': t,
                     'routeName': route_name,
+                    'displayTitle': display_title,
+                    'locationHint': loc_hint,
+                    'statusBadge': 'Running' if is_bus_active else 'Scheduled',
                     'fromStation': stops[from_idx]['placeName'],
                     'toStation': stops[to_idx]['placeName'],
                     'departureTime': dep_time,
@@ -1023,6 +1068,37 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 status_str = f"નિર્ધારિત સફર પૂર્ણ ({route_points[-1]['placeName']})"
                 status_class = "completed"
 
+        rem_km = 0.0
+        rem_time_str = "00:00:00"
+        if is_running and road_coords and len(road_coords) > 1:
+            best_k = min(range(len(road_coords)), key=lambda k: point_dist(road_coords[k], [cur_lat, cur_lng]))
+            for k in range(best_k, len(road_coords) - 1):
+                rem_km += haversine_km(road_coords[k], road_coords[k + 1])
+            rem_mins = max(0, int(round(end_mins - eff_cur_mins)))
+            hrs = rem_mins // 60
+            mins = rem_mins % 60
+            rem_time_str = f"{hrs:02d}:{mins:02d}:00"
+        elif is_boarding and road_coords and len(road_coords) > 1:
+            for k in range(len(road_coords) - 1):
+                rem_km += haversine_km(road_coords[k], road_coords[k + 1])
+            total_mins = max(0, int(round(end_mins - start_mins)))
+            hrs = total_mins // 60
+            mins = total_mins % 60
+            rem_time_str = f"{hrs:02d}:{mins:02d}:00"
+
+        origin_name = route_points[0]['placeName'].title()
+        dest_name = route_points[-1]['placeName'].title()
+        via_station = ""
+        for pt in route_points[1:-1]:
+            pn_u = pt['placeName'].upper()
+            if any(m in pn_u for m in ['VERAVAL', 'SOMNATH', 'KODINAR', 'PRACHI', 'KESHOD', 'VANTHALI', 'DHORAJI', 'JETPUR', 'GONDAL']):
+                via_station = pt['placeName'].title()
+                break
+        if not via_station and len(route_points) > 2:
+            via_station = route_points[len(route_points) // 2]['placeName'].title()
+
+        display_title = f"{origin_name} to {dest_name} Via {via_station}" if via_station else f"{origin_name} to {dest_name}"
+
         veh_no = details.get('vehicleNo') or f"{route_points[0]['placeCode']}-{trip_code[:8]}"
         class_name = details.get('className') or ('EXPRESS' if 'EXP' in trip_code else 'GURJARNAGARI' if 'GJR' in trip_code else 'LOCAL')
 
@@ -1037,6 +1113,9 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
             'actualdate': details.get('actualdate', ''),
             'status': status_str,
             'statusClass': status_class,
+            'displayTitle': display_title,
+            'remainingKm': round(rem_km, 3),
+            'remainingTime': rem_time_str,
             'overallProgress': round(overall_progress, 3),
             'roadCoordinates': road_coords,
             'currentLocation': current_location,
@@ -1082,9 +1161,10 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     matched_details = gsrtc_client.get_trip_details(t)
                     break
 
-        # 3. If query contains a partial vehicle number (e.g. 2061, 3680, 2868, etc.)
+        # 3. If query contains a partial vehicle number (e.g. 2590, 2061, 3680, 2868, etc.)
         if not matched_trip_code:
             sample_map = {
+                '2590': '1130JNDKDNEXP51',
                 '2061': '1315UPTUNAEXP51',
                 '3680': '1615VRLBVNEXP51',
                 '2868': '1415PBRDIUEXP51',
