@@ -561,6 +561,16 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+    def do_HEAD(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path.startswith('/api/'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            return
+        super().do_HEAD()
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -1512,14 +1522,14 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def start_keep_alive_thread():
     """
-    Keeps Render cloud web service awake 24/7 by periodically pinging the endpoint.
+    Keeps Render cloud web service awake 24/7 by periodically pinging the public endpoint.
     Render automatically spins down free instances after 15 minutes of zero HTTP traffic.
-    A self-heartbeat ping every 8 minutes guarantees the instance stays continuously online.
+    A self-heartbeat ping every 7 minutes guarantees the instance stays continuously online.
     """
     def pinger():
-        time.sleep(20)  # Wait for server to bind and start listening
-        ext_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("KEEP_ALIVE_URL")
-        print(f"[KeepAlive] Heartbeat thread active. External URL: {ext_url or 'localhost'}")
+        time.sleep(15)  # Wait for server to bind and start listening
+        ext_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("KEEP_ALIVE_URL") or "https://gsrtc-live.onrender.com"
+        print(f"[KeepAlive] Heartbeat thread active. External URL: {ext_url}")
 
         while True:
             try:
@@ -1537,14 +1547,14 @@ def start_keep_alive_thread():
                     ctx = ssl.create_default_context()
                     ctx.check_hostname = False
                     ctx.verify_mode = ssl.CERT_NONE
-                    with urllib.request.urlopen(req, context=ctx, timeout=12) as resp:
+                    with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
                         pass
                 print(f"[KeepAlive] Render heartbeat ping successful at {get_ist_now().strftime('%H:%M:%S')}")
             except Exception as e:
                 print(f"[KeepAlive] Heartbeat ping notice: {e}")
 
-            # Ping every 8 minutes (480 seconds)
-            time.sleep(480)
+            # Ping every 7 minutes (420 seconds - well under Render 15-minute inactivity limit)
+            time.sleep(420)
 
     t = threading.Thread(target=pinger, daemon=True, name="RenderKeepAliveThread")
     t.start()
