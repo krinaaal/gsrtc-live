@@ -549,19 +549,18 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 forward_diff = (dep_mins - cur_mins) % 1440
 
                 if forward_diff >= 1410:
-                    # Departed within last 30 minutes (still en route or at platform)
+                    # Departed within last 30 minutes according to timetable
                     mins_ago = 1440 - forward_diff
                     sort_key = 0
-                    status = f"પ્લેટફોર્મ પર છે / ઓન રોડ ({mins_ago} મિ. પહેલાં ઉપડી)"
-                    statusClass = "running"
+                    status = f"ઉપડવાનો સમય: {dep_time} ({mins_ago} મિ. પહેલાં)"
+                    statusClass = "past_dep"
                 elif forward_diff <= 15:
-                    # Upcoming at platform within 15 minutes
                     sort_key = forward_diff
-                    status = f"પ્લેટફોર્મ પર છે ({forward_diff} મિ.માં ઉપડશે)"
-                    statusClass = "running"
+                    status = f"નિર્ધારિત સમય: {dep_time} ({forward_diff} મિ.માં)"
+                    statusClass = "upcoming"
                 elif forward_diff <= 120:
                     sort_key = forward_diff
-                    status = f"{forward_diff} મિનિટમાં ઉપડશે"
+                    status = f"નિર્ધારિત સમય: {dep_time} ({forward_diff} મિ.માં)"
                     statusClass = "upcoming"
                 elif forward_diff <= 720:
                     sort_key = forward_diff
@@ -573,9 +572,9 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     statusClass = "upcoming"
 
                 details = gsrtc_client.get_trip_details(t) or {}
-                veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (dep_mins % 8999)}"
+                veh_no = details.get('vehicleNo') or f"{stops[0]['placeCode']}-{t[:8]}"
                 className = details.get('className') or ('EXPRESS' if 'EXP' in t else 'GURJARNAGARI' if 'GJR' in t else 'LOCAL')
-                conductor = details.get('conductorNo') or '8511773279'
+                conductor = details.get('conductorNo') or ''
 
                 first_stop = stops[0]['placeName']
                 last_stop = stops[-1]['placeName']
@@ -596,6 +595,7 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     'depotName': details.get('depotName', 'GSRTC'),
                     'status': status,
                     'statusClass': statusClass,
+                    'hasLiveGps': False,
                     'depMins': dep_mins,
                     'sortKey': sort_key,
                     'totalStops': len(stops),
@@ -653,19 +653,19 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 if forward_diff >= 1410:
                     mins_ago = 1440 - forward_diff
                     sort_key = 0
-                    status = f"પ્લેટફોર્મ પર છે / ઓન રોડ ({mins_ago} મિ. પહેલાં)"
+                    status = f"સમય: {st_time} ({mins_ago} મિ. પહેલાં)"
                 elif forward_diff <= 15:
                     sort_key = forward_diff
-                    status = f"પ્લેટફોર્મ પર છે ({forward_diff} મિ.માં આવશે/ઉપડશે)"
+                    status = f"સમય: {st_time} ({forward_diff} મિ.માં)"
                 elif forward_diff <= 120:
                     sort_key = forward_diff
-                    status = f"{forward_diff} મિનિટમાં આવશે"
+                    status = f"સમય: {st_time} ({forward_diff} મિ.માં)"
                 else:
                     sort_key = forward_diff
                     status = f"સમય: {st_time}"
 
                 details = gsrtc_client.get_trip_details(t) or {}
-                veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (st_mins % 8999)}"
+                veh_no = details.get('vehicleNo') or f"{st_code}-{t[:8]}"
                 className = details.get('className') or ('EXPRESS' if 'EXP' in t else 'GURJARNAGARI' if 'GJR' in t else 'LOCAL')
 
                 first_stop = stops[0]['placeName']
@@ -787,128 +787,46 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
         start_mins = route_points[0]['mins']
         end_mins = route_points[-1]['mins']
 
-        effective_cur_mins = cur_mins
-        if effective_cur_mins < start_mins and (effective_cur_mins + 1440) <= (end_mins + 120):
-            effective_cur_mins += 1440
+        # User requirement (Strict Ground Truth):
+        # "મારે તમામ રૂટ માટે exact બસ નું ઓરિજીનલ લોકેશન જોઈએ છે કોઈ અંદાજિત લોકેશન કે કોઈ ફોલ બેક નહીં"
+        # "જો બસ ના બતાવતા હોઈ તો કહી દેવું લોકેશન અવાઈલેબલ નથી"
+        # Zero synthetic interpolation or simulated moving pins on map.
+        has_live_gps = False
+        current_location = None
 
-        # Operational ground delay calibration for Saurashtra highway traffic:
-        # e.g. 1315UPTUNAEXP51 (Upleta - Una) runs with ~55 min real-world traffic delay
-        # At 18:36 it is just passing Prachi towards Kodinar (not jumping 90% ahead to Kesariya)
-        operational_delay = 0
-        if 'UPTUNA' in trip_code or '1315UPT' in trip_code:
-            operational_delay = 55
-        elif 'JNDUNA' in trip_code or 'PBRDIU' in trip_code or 'PBRUNA' in trip_code:
-            operational_delay = 40
-        elif any(c in trip_code for c in ['VRL', 'KDN', 'UNA']):
-            operational_delay = 20
-
-        # Adjusted progress along route taking real highway conditions into account
-        prog_mins = effective_cur_mins - operational_delay
-        total_segs = max(1, len(route_points) - 1)
-
-        has_live_gps = True
-
-        if prog_mins < start_mins:
-            # Bus has not started or is parked at origin station
-            has_live_gps = False
-            cur_seg_idx = 0
-            ratio = 0.0
-            p1 = route_points[0]
-            p2 = route_points[min(1, len(route_points) - 1)]
-            cur_lat, cur_lng = road_coords[0][0], road_coords[0][1]
-            if len(road_coords) > 1:
-                heading = calculate_bearing(road_coords[0][0], road_coords[0][1], road_coords[1][0], road_coords[1][1])
-            else:
-                heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
-            speed = 0.0
-            diff = start_mins - prog_mins
+        if cur_mins < start_mins:
+            diff = start_mins - cur_mins
             if diff <= 15:
-                status_str = f"પ્લેટફોર્મ પર છે ({int(diff)} મિનિટમાં ઉપડશે)"
-                overall_progress = 0.05
+                status_str = f"પ્લેટફોર્મ પર નિર્ધારિત ({int(diff)} મિનિટમાં ઉપડશે)"
             else:
-                status_str = f"નિર્ધારિત ઉપડવાનો સમય: {p1['time']} ({p1['placeName']} ડેપો પર છે)"
-                overall_progress = 0.0
-        elif prog_mins >= end_mins:
-            # Bus reached final destination
-            has_live_gps = False
-            cur_seg_idx = len(route_points) - 2
-            ratio = 1.0
-            overall_progress = 1.0
-            p1 = route_points[-2]
-            p2 = route_points[-1]
-            cur_lat, cur_lng = road_coords[-1][0], road_coords[-1][1]
-            if len(road_coords) > 1:
-                heading = calculate_bearing(road_coords[-2][0], road_coords[-2][1], road_coords[-1][0], road_coords[-1][1])
-            else:
-                heading = calculate_bearing(p1['lat'], p1['lng'], p2['lat'], p2['lng'])
-            speed = 0.0
-            status_str = f"સફર પૂર્ણ થઈ ગઈ છે ({p2['placeName']} સ્ટેન્ડ પર પહોંચી ગઈ)"
+                status_str = f"નિર્ધારિત ઉપડવાનો સમય: {route_points[0]['time']} ({route_points[0]['placeName']} ડેપો)"
+            status_class = "scheduled"
+        elif cur_mins >= end_mins + 30:
+            status_str = f"નિર્ધારિત સફર પૂર્ણ ({route_points[-1]['placeName']})"
+            status_class = "completed"
         else:
-            # Bus is actively driving on physical highway road
-            cur_seg_idx = 0
-            for i in range(len(route_points) - 1):
-                if prog_mins >= route_points[i]['mins']:
-                    cur_seg_idx = i
+            status_str = "લાઈવ GPS લોકેશન હાલ ઉપલબ્ધ નથી (GSRTC VTS સિગ્નલ પ્રાપ્ત થયું નથી)"
+            status_class = "unavailable"
 
-            p1 = route_points[cur_seg_idx]
-            p2 = route_points[min(cur_seg_idx + 1, len(route_points) - 1)]
-
-            t1 = p1['mins']
-            t2 = p2['mins']
-            if t2 > t1:
-                ratio = max(0.04, min(0.96, (prog_mins - t1) / float(t2 - t1)))
-            else:
-                ratio = 0.5
-
-            # Snap strictly onto physical road coordinates
-            overall_progress = round(max(0.05, min(0.98, (cur_seg_idx + ratio) / float(total_segs))), 4)
-            road_idx = int(overall_progress * (len(road_coords) - 1))
-            road_idx = max(0, min(len(road_coords) - 1, road_idx))
-            cur_lat = road_coords[road_idx][0]
-            cur_lng = road_coords[road_idx][1]
-
-            next_idx = min(road_idx + 1, len(road_coords) - 1)
-            if next_idx == road_idx and road_idx > 0:
-                heading = calculate_bearing(road_coords[road_idx - 1][0], road_coords[road_idx - 1][1], road_coords[road_idx][0], road_coords[road_idx][1])
-            else:
-                heading = calculate_bearing(road_coords[road_idx][0], road_coords[road_idx][1], road_coords[next_idx][0], road_coords[next_idx][1])
-
-            speed = round(45.0 + 5.0 * math.sin(now.second * 0.15 + cur_seg_idx), 1)
-
-            if operational_delay > 0:
-                status_str = f"ઓન રોડ ({int(speed)} કિમી/કલાક) - {p1['placeName']} થી {p2['placeName']} તરફ (ટ્રાફિક વિલંબ ~{operational_delay} મિ.)"
-            else:
-                status_str = f"ઓન રોડ ({int(speed)} કિમી/કલાક) - {p1['placeName']} થી {p2['placeName']} તરફ"
-
-        veh_no = details.get('vehicleNo') or f"GJ-18-Z-{1000 + (route_points[0]['mins'] % 8999)}"
+        veh_no = details.get('vehicleNo') or f"{route_points[0]['placeCode']}-{trip_code[:8]}"
+        class_name = details.get('className') or ('EXPRESS' if 'EXP' in trip_code else 'GURJARNAGARI' if 'GJR' in trip_code else 'LOCAL')
 
         return {
             'tripCode': trip_code,
             'vehicleNo': veh_no,
             'hasLiveGps': has_live_gps,
-            'operationalDelay': operational_delay,
-            'className': details.get('className', 'EXPRESS'),
-            'conductorNo': details.get('conductorNo', '8511773279'),
+            'className': class_name,
+            'conductorNo': details.get('conductorNo', ''),
             'depotName': details.get('depotName', 'GSRTC'),
-            'curSegIdx': cur_seg_idx,
-            'segmentRatio': round(ratio, 4),
-            'progressRatio': overall_progress,
-            'overallProgress': overall_progress,
+            'divisonName': details.get('divisonName', ''),
+            'actualdate': details.get('actualdate', ''),
             'status': status_str,
+            'statusClass': status_class,
+            'message': 'આ બસનું લાઈવ GPS લોકેશન હાલ ઉપલબ્ધ નથી. GSRTC નિયમ મુજબ કોઈપણ અંદાજિત કે બનાવટી લોકેશન દર્શાવવામાં આવતું નથી જેથી મુસાફરો ગેરમાર્ગે ન દોરાય.',
             'roadCoordinates': road_coords,
-            'currentLocation': {
-                'lat': round(cur_lat, 5),
-                'lng': round(cur_lng, 5),
-                'heading': heading,
-                'speed': speed,
-                'status': status_str,
-                'curSegIdx': cur_seg_idx,
-                'segmentRatio': round(ratio, 4),
-                'lastStop': p1['placeName'],
-                'nextStop': p2['placeName'],
-                'etaNext': p2['time']
-            },
-            'routePoints': route_points
+            'currentLocation': current_location,
+            'routePoints': route_points,
+            'stops': route_points
         }
 
     def find_and_track_by_vehicle_or_pnr(self, query):

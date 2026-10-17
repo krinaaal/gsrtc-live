@@ -785,12 +785,16 @@ function renderBusList(buses) {
               <span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                 ${bus.vehicleNo}
               </span>
-              ${bus.statusClass === 'running' ? `
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+              ${bus.hasLiveGps ? `
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                  ઓન રોડ
+                  લાઈવ GPS સક્રિય
                 </span>
-              ` : ''}
+              ` : `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                  ⚠️ સમયપત્રક (GPS ઑફલાઇન)
+                </span>
+              `}
             </div>
             <h3 class="text-sm font-extrabold text-slate-800 mt-1 leading-snug">
               ${bus.routeName}
@@ -842,7 +846,7 @@ function renderBusList(buses) {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
             </svg>
-            ${t('trackBusBtn')}
+            ${bus.hasLiveGps ? 'લાઈવ ટ્રેક કરો' : 'રૂટ અને સમયપત્રક'}
           </button>
         </div>
       </div>
@@ -1243,6 +1247,26 @@ function getPositionOnRoad(curSegIdx, segmentRatio, points, segmentsArray = acti
   return { lat, lng, heading };
 }
 
+// Dynamic Corridor Quick-Track Helper
+async function trackCorridorBus(corridorType) {
+  let targetTripCode = '1315UPTUNAEXP51';
+  const now = new Date();
+  const curM = now.getHours() * 60 + now.getMinutes();
+
+  if (corridorType === 'JNDUNA') {
+    if (curM < 12 * 60 + 30) targetTripCode = '1200JNDUNAEXP51';
+    else if (curM < 15 * 60 + 30) targetTripCode = '1500JNDUNAEXP51';
+    else targetTripCode = '0700JNDUNAEXP51';
+  } else if (corridorType === 'UPTUNA') {
+    targetTripCode = '1315UPTUNAEXP51';
+  } else if (corridorType === 'PBRDIU') {
+    if (curM < 10 * 60) targetTripCode = '0545PBRDIUEXP51';
+    else targetTripCode = '1415PBRDIUEXP51';
+  }
+  await startLiveTrack(targetTripCode);
+}
+window.trackCorridorBus = trackCorridorBus;
+
 // Start Live Real-Time Tracking for Trip Code
 async function startLiveTrack(tripCode) {
   if (activeTrackingTripCode !== tripCode) {
@@ -1313,18 +1337,19 @@ async function renderTrackingView(trackData, isSilent = false) {
   initTrackMapIfNeeded();
   if (!trackMapInstance) return;
 
-  const points = trackData.routePoints || [];
+  const points = trackData.routePoints || trackData.stops || [];
   if (points.length < 2) return;
   const loc = trackData.currentLocation;
+  const hasLiveGps = !!(trackData.hasLiveGps && loc && loc.lat);
 
   if (isInitialTripTrack || !routeLine) {
     // --- 1. INITIAL LOAD FOR THIS TRIP ---
-    if (routeLine) trackMapInstance.removeLayer(routeLine);
-    if (busMarker) trackMapInstance.removeLayer(busMarker);
+    if (routeLine) { trackMapInstance.removeLayer(routeLine); routeLine = null; }
+    if (busMarker) { trackMapInstance.removeLayer(busMarker); busMarker = null; }
     stopMarkers.forEach(m => trackMapInstance.removeLayer(m));
     stopMarkers = [];
 
-    // Build Highway Road Polyline on Google Maps
+    // Build Highway Road Polyline on Map
     if (trackData.roadCoordinates && trackData.roadCoordinates.length > 1) {
       activeRoadCoordinates = trackData.roadCoordinates;
     } else {
@@ -1354,129 +1379,186 @@ async function renderTrackingView(trackData, isSilent = false) {
       stopMarkers.push(m);
     });
 
-    // Compute exact on-road position (strictly pinned to physical highway road)
-    const roadPos = (loc && loc.lat)
-      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
-      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
-    currentBusLocation = roadPos;
-
-    // Create 3D Animated Bus Marker
-    busMarker = L.marker([roadPos.lat, roadPos.lng], {
-      icon: createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed),
-      zIndexOffset: 1000
-    }).addTo(trackMapInstance);
-
-    // Fit route bounds ONLY on initial load
+    // Fit route bounds on initial load
     trackMapInstance.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
     setTimeout(() => {
       trackMapUserZoom = trackMapInstance.getZoom();
     }, 400);
 
     isInitialTripTrack = false;
+  }
 
+  // --- 2. BUS MARKER: STRICTLY NO FAKE / ESTIMATED MARKER ---
+  if (!hasLiveGps) {
+    // Live GPS is not transmitting: remove any leftover marker
+    if (busMarker) {
+      trackMapInstance.removeLayer(busMarker);
+      busMarker = null;
+    }
+    currentBusLocation = null;
   } else {
-    // --- 2. AUTOMATIC BACKGROUND LOCATION UPDATE ---
-    // User requirement: "મેપમાં જેટલું જુમિંગ કરેલું હોય એટલું જ રહેવું જોઈએ"
-    // Strictly preserve user zoom level - NEVER reset or fitBounds!
+    // Verified Authentic Live GPS is available
     const effectiveZoom = (trackMapUserZoom !== null) ? trackMapUserZoom : trackMapInstance.getZoom();
-
-    // Compute exact on-road position along physical road geometry
-    const roadPos = (loc && loc.lat)
-      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
-      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points);
-    currentBusLocation = roadPos;
+    currentBusLocation = { lat: loc.lat, lng: loc.lng, heading: loc.heading || 0 };
 
     if (busMarker) {
-      busMarker.setLatLng([roadPos.lat, roadPos.lng]);
-      busMarker.setIcon(createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed));
+      busMarker.setLatLng([loc.lat, loc.lng]);
+      busMarker.setIcon(createRealisticBusIcon(trackData.vehicleNo, loc.heading, loc.speed));
     } else {
-      busMarker = L.marker([roadPos.lat, roadPos.lng], {
-        icon: createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed),
+      busMarker = L.marker([loc.lat, loc.lng], {
+        icon: createRealisticBusIcon(trackData.vehicleNo, loc.heading, loc.speed),
         zIndexOffset: 1000
       }).addTo(trackMapInstance);
     }
 
-    // Auto-follow: pan smoothly to bus while maintaining exact user zoom
     if (isAutoFollowEnabled) {
-      trackMapInstance.panTo([roadPos.lat, roadPos.lng], { animate: true, duration: 1.0 });
+      trackMapInstance.panTo([loc.lat, loc.lng], { animate: true, duration: 1.0 });
       if (trackMapInstance.getZoom() !== effectiveZoom) {
         trackMapInstance.setZoom(effectiveZoom);
       }
     }
   }
 
-  // Update Live Bus Card
+  // --- 3. LIVE BUS CARD RENDERING ---
   const card = document.getElementById('live-bus-card');
   if (card) {
-    const progressPercent = Math.round((trackData.overallProgress || trackData.progressRatio || 0) * 100);
-    card.innerHTML = `
-      <div class="bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-rose-200">
-        <!-- Route & Status Badge -->
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
-                ${trackData.className}
-              </span>
-              <span class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-300">
-                ${trackData.vehicleNo}
-              </span>
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${trackData.hasLiveGps !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                <span class="w-1.5 h-1.5 rounded-full ${trackData.hasLiveGps !== false ? 'bg-emerald-600 animate-ping' : 'bg-amber-600'}"></span>
-                ${trackData.hasLiveGps !== false ? 'વાસ્તવિક ઓન-રોડ GPS' : 'નિર્ધારિત સ્થિતિ'}
-              </span>
+    if (!hasLiveGps) {
+      // User directive: "જો બસ ના બતાવતા હોઈ તો કહી દેવું લોકેશન અવાઈલેબલ નથી પણ એપ ના તમામ રૂટ ની બસો ના લોકેશન સાચા અને સચોટ જોઈએ છે જેમ GSRTC live એપ માં આવે એમ જ"
+      card.innerHTML = `
+        <div class="bg-amber-50/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border-2 border-amber-300">
+          <!-- Top Row: Badges & Route -->
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                  ${trackData.className || 'EXPRESS'}
+                </span>
+                ${trackData.vehicleNo ? `
+                  <span class="text-xs font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded-md border border-slate-300">
+                    ${trackData.vehicleNo}
+                  </span>
+                ` : ''}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  ⚠️ લાઈવ લોકેશન ઉપલબ્ધ નથી
+                </span>
+              </div>
+              <h3 class="text-sm font-black text-slate-900 mt-1">
+                ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
+              </h3>
             </div>
-            <h3 class="text-sm font-black text-slate-900 mt-1">
-              ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
-            </h3>
+            <span class="text-[11px] font-bold text-amber-900 bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300 whitespace-nowrap">
+              GPS ઑફલાઇન
+            </span>
           </div>
-          <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-            ${loc.speed > 0 ? `${Math.round(loc.speed)} કિમી/કલાક` : 'પ્લેટફોર્મ પર'}
-          </span>
-        </div>
 
-        <!-- Live Status Subtitle -->
-        <div class="text-[11px] font-bold text-rose-800 bg-rose-50/80 px-2.5 py-1 rounded-xl mb-2 border border-rose-100 flex items-center justify-between">
-          <span>🚦 ${trackData.status || loc.status}</span>
-          <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
-        </div>
-
-        ${trackData.operationalDelay > 0 ? `
-          <div class="text-[10px] font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-xl mb-2 border border-amber-200 flex items-center gap-1.5">
-            <span>⏱️</span>
-            <span>સૌરાષ્ટ્ર હાઇવે ટ્રાફિક વિલંબ: ~${trackData.operationalDelay} મિનિટ (વાસ્તવિક ગ્રાઉન્ડ સ્થિતિ)</span>
+          <!-- Truthful Alert Banner Requested by User -->
+          <div class="p-3 bg-white/90 rounded-2xl border border-amber-200 my-2 text-left shadow-sm">
+            <div class="flex items-start gap-2.5">
+              <span class="text-lg">⚠️</span>
+              <div class="text-xs text-slate-700 leading-relaxed">
+                <strong class="text-amber-950 font-bold block mb-0.5">આ બસનું લાઈવ GPS લોકેશન હાલ ઉપલબ્ધ નથી</strong>
+                બસમાં VTS જીપીએસ સિગ્નલ હાલ ઑફલાઇન છે અથવા GSRTC સર્વર પરથી લાઈવ ટ્રેકિંગ પ્રાપ્ત થઈ રહ્યું નથી. મુસાફરીમાં ગેરસમજ કે અસુવિધા ન થાય તે માટે <strong>કોઈપણ અંદાજિત કે બનાવટી લોકેશન દર્શાવવામાં આવતું નથી.</strong>
+              </div>
+            </div>
           </div>
-        ` : ''}
 
-        <!-- Progress Bar -->
-        <div class="my-2">
-          <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 mb-1">
-            <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop}</strong></span>
-            <span>આગળનું: <strong class="text-rose-700">${loc.nextStop} (${loc.etaNext})</strong></span>
+          <!-- Scheduled Stops & Timetable from GSRTC Database -->
+          <div class="bg-rose-50/60 rounded-2xl p-3 border border-rose-100 text-xs text-slate-700 space-y-2">
+            <div class="flex items-center justify-between font-bold text-rose-950 border-b border-rose-200 pb-1.5">
+              <span>🕒 નિર્ધારિત સમયપત્રક (${points.length} સ્ટોપ)</span>
+              <span class="text-[10px] font-medium text-slate-500">સત્તાવાર GSRTC સમય</span>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-600">પ્રસ્થાન (${points[0].placeName}):</span>
+              <strong class="text-slate-900 font-black">${points[0].time}</strong>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-600">ગંતવ્ય (${points[points.length - 1].placeName}):</span>
+              <strong class="text-slate-900 font-black">${points[points.length - 1].time}</strong>
+            </div>
+            ${points.length > 2 ? `
+              <div class="pt-1 text-[11px] text-slate-600">
+                <span class="font-bold text-rose-800">મુખ્ય સ્ટોપ:</span>
+                ${points.slice(1, -1).map(p => `${p.placeName} (${p.time})`).join(' • ')}
+              </div>
+            ` : ''}
           </div>
-          <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-            <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
+
+          <!-- Contact & Footer -->
+          <div class="pt-2.5 mt-2.5 border-t border-rose-100 flex items-center justify-between text-xs">
+            ${trackData.conductorNo ? `
+              <a href="tel:${trackData.conductorNo}" class="inline-flex items-center gap-1.5 text-rose-700 font-bold hover:underline">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
+                કંડક્ટર: ${trackData.conductorNo}
+              </a>
+            ` : `
+              <span class="text-slate-500 font-medium">ડેપો: <strong>${trackData.depotName || 'GSRTC'}</strong></span>
+            `}
+            <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+              ક્રિનલ ❤️ મિત્તલ 💖
+            </span>
           </div>
         </div>
+      `;
+    } else {
+      // Verified Authentic Live GPS active
+      const progressPercent = Math.round((trackData.overallProgress || trackData.progressRatio || 0) * 100);
+      card.innerHTML = `
+        <div class="bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-rose-200">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                  ${trackData.className}
+                </span>
+                <span class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-300">
+                  ${trackData.vehicleNo}
+                </span>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                  ઓન-રોડ લાઈવ GPS
+                </span>
+              </div>
+              <h3 class="text-sm font-black text-slate-900 mt-1">
+                ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
+              </h3>
+            </div>
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+              ${loc.speed > 0 ? `${Math.round(loc.speed)} કિમી/કલાક` : 'પ્લેટફોર્મ પર'}
+            </span>
+          </div>
 
-        <!-- Contact & Blessing Footer -->
-        <div class="pt-2 border-t border-rose-100 flex items-center justify-between text-xs">
-          ${trackData.conductorNo ? `
-            <a href="tel:${trackData.conductorNo}" class="inline-flex items-center gap-1 text-slate-700 font-semibold hover:text-rose-700">
-              <svg class="w-3.5 h-3.5 text-rose-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/>
-              </svg>
-              કંડક્ટર: ${trackData.conductorNo}
-            </a>
-          ` : `
-            <span class="text-slate-500 font-medium">ડેપો: <strong>${trackData.depotName}</strong></span>
-          `}
-          <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
-            શુભ યાત્રા મિત્તલ 💖
-          </span>
+          <div class="text-[11px] font-bold text-rose-800 bg-rose-50/80 px-2.5 py-1 rounded-xl mb-2 border border-rose-100 flex items-center justify-between">
+            <span>🚦 ${trackData.status || loc.status}</span>
+            <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
+          </div>
+
+          <div class="my-2">
+            <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 mb-1">
+              <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop || points[0].placeName}</strong></span>
+              <span>આગળનું: <strong class="text-rose-700">${loc.nextStop || points[1].placeName} (${loc.etaNext || ''})</strong></span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-rose-100 flex items-center justify-between text-xs">
+            ${trackData.conductorNo ? `
+              <a href="tel:${trackData.conductorNo}" class="inline-flex items-center gap-1 text-slate-700 font-semibold hover:text-rose-700">
+                <svg class="w-3.5 h-3.5 text-rose-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
+                કંડક્ટર: ${trackData.conductorNo}
+              </a>
+            ` : `
+              <span class="text-slate-500 font-medium">ડેપો: <strong>${trackData.depotName}</strong></span>
+            `}
+            <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+              ક્રિનલ ❤️ મિત્તલ 💖
+            </span>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
   }
 }
 
@@ -1839,13 +1921,14 @@ function renderPnrTrackingView(trackData, isSilent = false) {
   initPnrMapIfNeeded();
   if (!pnrMapInstance) return;
 
-  const points = trackData.routePoints || [];
+  const points = trackData.routePoints || trackData.stops || [];
   if (points.length < 2) return;
   const loc = trackData.currentLocation;
+  const hasLiveGps = !!(trackData.hasLiveGps && loc && loc.lat);
 
   if (isInitialPnrTripTrack || !pnrRouteLine) {
-    if (pnrRouteLine) pnrMapInstance.removeLayer(pnrRouteLine);
-    if (pnrBusMarker) pnrMapInstance.removeLayer(pnrBusMarker);
+    if (pnrRouteLine) { pnrMapInstance.removeLayer(pnrRouteLine); pnrRouteLine = null; }
+    if (pnrBusMarker) { pnrMapInstance.removeLayer(pnrBusMarker); pnrBusMarker = null; }
     pnrStopMarkers.forEach(m => pnrMapInstance.removeLayer(m));
     pnrStopMarkers = [];
 
@@ -1884,41 +1967,37 @@ function renderPnrTrackingView(trackData, isSilent = false) {
       pnrStopMarkers.push(m);
     });
 
-    const roadPos = (loc && loc.lat)
-      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
-      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points, pnrActiveRouteSegments);
-    pnrCurrentBusLocation = roadPos;
-
-    pnrBusMarker = L.marker([roadPos.lat, roadPos.lng], {
-      icon: createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed),
-      zIndexOffset: 1000
-    }).addTo(pnrMapInstance);
-
     pnrMapInstance.fitBounds(pnrRouteLine.getBounds(), { padding: [40, 40] });
     setTimeout(() => {
       pnrMapUserZoom = pnrMapInstance.getZoom();
     }, 400);
 
     isInitialPnrTripTrack = false;
+  }
+
+  // --- Bus Marker: Only if authentic GPS exists ---
+  if (!hasLiveGps) {
+    if (pnrBusMarker) {
+      pnrMapInstance.removeLayer(pnrBusMarker);
+      pnrBusMarker = null;
+    }
+    pnrCurrentBusLocation = null;
   } else {
     const effectiveZoom = (pnrMapUserZoom !== null) ? pnrMapUserZoom : pnrMapInstance.getZoom();
-    const roadPos = (loc && loc.lat)
-      ? { lat: loc.lat, lng: loc.lng, heading: loc.heading }
-      : getPositionOnRoad(trackData.curSegIdx, trackData.segmentRatio, points, pnrActiveRouteSegments);
-    pnrCurrentBusLocation = roadPos;
+    pnrCurrentBusLocation = { lat: loc.lat, lng: loc.lng, heading: loc.heading || 0 };
 
     if (pnrBusMarker) {
-      pnrBusMarker.setLatLng([roadPos.lat, roadPos.lng]);
-      pnrBusMarker.setIcon(createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed));
+      pnrBusMarker.setLatLng([loc.lat, loc.lng]);
+      pnrBusMarker.setIcon(createRealisticBusIcon(trackData.vehicleNo, loc.heading, loc.speed));
     } else {
-      pnrBusMarker = L.marker([roadPos.lat, roadPos.lng], {
-        icon: createRealisticBusIcon(trackData.vehicleNo, roadPos.heading, loc.speed),
+      pnrBusMarker = L.marker([loc.lat, loc.lng], {
+        icon: createRealisticBusIcon(trackData.vehicleNo, loc.heading, loc.speed),
         zIndexOffset: 1000
       }).addTo(pnrMapInstance);
     }
 
     if (isPnrAutoFollowEnabled) {
-      pnrMapInstance.panTo([roadPos.lat, roadPos.lng], { animate: true, duration: 1.0 });
+      pnrMapInstance.panTo([loc.lat, loc.lng], { animate: true, duration: 1.0 });
       if (pnrMapInstance.getZoom() !== effectiveZoom) {
         pnrMapInstance.setZoom(effectiveZoom);
       }
@@ -1928,61 +2007,129 @@ function renderPnrTrackingView(trackData, isSilent = false) {
   // Update details card in #pnr-bus-card
   const card = document.getElementById('pnr-bus-card');
   if (card) {
-    const progressPercent = Math.round((trackData.progressRatio || 0) * 100);
-    card.innerHTML = `
-      <div class="bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-rose-200 fade-in my-2">
-        <div class="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
-                ${trackData.className}
-              </span>
-              <span class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-300">
-                ${trackData.vehicleNo}
-              </span>
-              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
-                લાઈવ જીપીએસ
-              </span>
+    if (!hasLiveGps) {
+      card.innerHTML = `
+        <div class="bg-amber-50/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border-2 border-amber-300 fade-in my-2">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                  ${trackData.className || 'EXPRESS'}
+                </span>
+                ${trackData.vehicleNo ? `
+                  <span class="text-xs font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded-md border border-slate-300">
+                    ${trackData.vehicleNo}
+                  </span>
+                ` : ''}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  ⚠️ લાઈવ લોકેશન ઉપલબ્ધ નથી
+                </span>
+              </div>
+              <h3 class="text-sm font-black text-slate-900 mt-1">
+                ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
+              </h3>
             </div>
-            <h3 class="text-sm font-black text-slate-900 mt-1">
-              ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
-            </h3>
+            <span class="text-[11px] font-bold text-amber-900 bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-300 whitespace-nowrap">
+              GPS ઑફલાઇન
+            </span>
           </div>
-          <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
-            ${loc.speed > 0 ? `${Math.round(loc.speed)} કિમી/કલાક` : 'પ્લેટફોર્મ પર'}
-          </span>
-        </div>
 
-        <!-- Live Status Subtitle -->
-        <div class="text-[11px] font-bold text-rose-800 bg-rose-50/80 px-2.5 py-1 rounded-xl mb-2 border border-rose-100 flex items-center justify-between">
-          <span>🚦 ${trackData.status || loc.status}</span>
-          <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
-        </div>
+          <div class="p-3 bg-white/90 rounded-2xl border border-amber-200 my-2 text-left shadow-sm">
+            <div class="flex items-start gap-2.5">
+              <span class="text-lg">⚠️</span>
+              <div class="text-xs text-slate-700 leading-relaxed">
+                <strong class="text-amber-950 font-bold block mb-0.5">આ વાહનનું લાઈવ GPS લોકેશન હાલ ઉપલબ્ધ નથી</strong>
+                બસમાં VTS જીપીએસ યુનિટ ઑફલાઇન છે અથવા GSRTC સર્વર પરથી લાઈવ સિગ્નલ પ્રાપ્ત થયું નથી. મુસાફરીમાં ગેરસમજ ન થાય તે માટે <strong>કોઈપણ અંદાજિત કે બનાવટી લોકેશન દર્શાવવામાં આવતું નથી.</strong>
+              </div>
+            </div>
+          </div>
 
-        <div class="my-2">
-          <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 mb-1">
-            <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop}</strong></span>
-            <span>આગળનું: <strong class="text-rose-700">${loc.nextStop} (${loc.etaNext})</strong></span>
+          <div class="bg-rose-50/60 rounded-2xl p-3 border border-rose-100 text-xs text-slate-700 space-y-2">
+            <div class="flex items-center justify-between font-bold text-rose-950 border-b border-rose-200 pb-1.5">
+              <span>🕒 નિર્ધારિત સમયપત્રક (${points.length} સ્ટોપ)</span>
+              <span class="text-[10px] font-medium text-slate-500">સત્તાવાર GSRTC સમય</span>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-600">પ્રસ્થાન (${points[0].placeName}):</span>
+              <strong class="text-slate-900 font-black">${points[0].time}</strong>
+            </div>
+            <div class="flex justify-between items-center text-xs">
+              <span class="text-slate-600">ગંતવ્ય (${points[points.length - 1].placeName}):</span>
+              <strong class="text-slate-900 font-black">${points[points.length - 1].time}</strong>
+            </div>
           </div>
-          <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-            <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
-          </div>
-        </div>
 
-        <div class="pt-2 border-t border-rose-100/70 flex items-center justify-between text-[11px] text-slate-600">
-          <div>
-            <span>ડેપો: <strong class="text-slate-800">${trackData.depotName}</strong></span>
-            <span class="mx-1">•</span>
-            <span>ટ્રિપ કોડ: <strong class="font-mono text-slate-700">${trackData.tripCode}</strong></span>
+          <div class="pt-2.5 mt-2.5 border-t border-rose-100 flex items-center justify-between text-xs">
+            ${trackData.conductorNo ? `
+              <a href="tel:${trackData.conductorNo}" class="inline-flex items-center gap-1.5 text-rose-700 font-bold hover:underline">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 4V3z"/></svg>
+                કંડક્ટર: ${trackData.conductorNo}
+              </a>
+            ` : `
+              <span class="text-slate-500 font-medium">ડેપો: <strong>${trackData.depotName || 'GSRTC'}</strong></span>
+            `}
+            <span class="text-[11px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+              ક્રિનલ ❤️ મિત્તલ 💖
+            </span>
           </div>
-          ${trackData.conductorNo ? `
-            <a href="tel:${trackData.conductorNo}" class="text-rose-700 font-bold hover:underline flex items-center gap-1">
-              <span>📞</span> ${trackData.conductorNo}
-            </a>
-          ` : ''}
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      const progressPercent = Math.round((trackData.progressRatio || 0) * 100);
+      card.innerHTML = `
+        <div class="bg-white/95 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-rose-200 fade-in my-2">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                  ${trackData.className}
+                </span>
+                <span class="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-300">
+                  ${trackData.vehicleNo}
+                </span>
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping"></span>
+                  લાઈવ જીપીએસ
+                </span>
+              </div>
+              <h3 class="text-sm font-black text-slate-900 mt-1">
+                ${points[0].placeName} ➔ ${points[points.length - 1].placeName}
+              </h3>
+            </div>
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 shrink-0">
+              ${loc.speed > 0 ? `${Math.round(loc.speed)} કિમી/કલાક` : 'પ્લેટફોર્મ પર'}
+            </span>
+          </div>
+
+          <div class="text-[11px] font-bold text-rose-800 bg-rose-50/80 px-2.5 py-1 rounded-xl mb-2 border border-rose-100 flex items-center justify-between">
+            <span>🚦 ${trackData.status || loc.status}</span>
+            <span class="text-[10px] font-extrabold text-slate-500">${progressPercent}% સફર પૂર્ણ</span>
+          </div>
+
+          <div class="my-2">
+            <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 mb-1">
+              <span>છેલ્લું: <strong class="text-slate-800">${loc.lastStop || points[0].placeName}</strong></span>
+              <span>આગળનું: <strong class="text-rose-700">${loc.nextStop || points[1].placeName} (${loc.etaNext || ''})</strong></span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+              <div class="h-full bg-gradient-to-r from-rose-500 to-rose-600 rounded-full transition-all duration-700" style="width: ${progressPercent}%"></div>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-rose-100/70 flex items-center justify-between text-[11px] text-slate-600">
+            <div>
+              <span>ડેપો: <strong class="text-slate-800">${trackData.depotName}</strong></span>
+              <span class="mx-1">•</span>
+              <span>ટ્રિપ કોડ: <strong class="font-mono text-slate-700">${trackData.tripCode}</strong></span>
+            </div>
+            ${trackData.conductorNo ? `
+              <a href="tel:${trackData.conductorNo}" class="text-rose-700 font-bold hover:underline flex items-center gap-1">
+                <span>📞</span> ${trackData.conductorNo}
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
   }
 }
