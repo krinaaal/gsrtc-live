@@ -1007,33 +1007,47 @@ function initStationsMapIfNeeded() {
   }
 }
 
-// Realistic 3D GSRTC Bus Marker HTML (Zero-offset anchor: strictly centered at [20, 20])
+// Official GSRTC Live Red Bus Pin Marker (Teardrop Pin with White Bus Silhouette inside)
 function createRealisticBusIcon(busNo, bearing, speed) {
   const roundedBearing = Math.round(bearing || 0);
   const roundedSpeed = Math.round(speed || 0);
 
   return L.divIcon({
-    className: 'custom-bus-container',
+    className: 'official-gsrtc-bus-pin',
     html: `
-      <div style="position: relative; width: 40px; height: 40px; pointer-events: auto;">
-        <!-- Floating Live Speed & Bus Number Pill (Hovering directly above the bus without displacing center anchor) -->
-        <div style="position: absolute; bottom: calc(100% + 5px); left: 50%; transform: translateX(-50%); pointer-events: none;" class="bg-slate-900/95 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap shadow-lg border border-rose-500 flex items-center gap-1">
+      <div style="position: relative; width: 38px; height: 50px; pointer-events: auto; display: flex; flex-direction: column; align-items: center;">
+        <!-- Floating Live Plate & Speed Badge (Matches official app) -->
+        <div style="position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%); pointer-events: none;" class="bg-slate-900/95 text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold whitespace-nowrap shadow-xl border border-rose-500 flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full ${roundedSpeed > 0 ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}"></span>
-          <span>${busNo}</span>
-          <span class="text-rose-400 font-mono">${roundedSpeed} km/h</span>
+          <span class="font-mono">${busNo || 'GSRTC'}</span>
+          ${roundedSpeed > 0 ? `<span class="text-rose-400 font-mono">${roundedSpeed} km/h</span>` : ''}
         </div>
 
-        <!-- 3D Rotating Bus with Headlight Beam (Center strictly at 20px, 20px) -->
-        <div style="position: absolute; top: 0; left: 0; width: 40px; height: 40px; transform: rotate(${roundedBearing}deg); transform-origin: 20px 20px; transition: transform 0.6s ease-out;">
-          ${roundedSpeed > 0 ? '<div class="headlight-beam"></div>' : ''}
-          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-700 via-rose-600 to-rose-500 shadow-2xl flex items-center justify-center border-2 border-white transform hover:scale-110 transition-transform">
-            <img src="./icons/bus-marker.png" alt="Bus" class="w-6 h-6 object-contain" />
-          </div>
+        <!-- Official GSRTC Red Pin SVG (Sharp tip touches highway at bottom [19, 49]) -->
+        <div style="width: 38px; height: 49px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));">
+          <svg width="38" height="49" viewBox="0 0 38 49" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Pin Outer Body -->
+            <path d="M19 0C8.5 0 0 8.5 0 19C0 32.5 19 49 19 49C19 49 38 32.5 38 19C38 8.5 29.5 0 19 0Z" fill="#ff0000"/>
+            <path d="M19 1.5C9.33 1.5 1.5 9.33 1.5 19C1.5 31.2 18.2 46.5 19 47.3C19.8 46.5 36.5 31.2 36.5 19C36.5 9.33 28.67 1.5 19 1.5Z" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8"/>
+            <!-- White Bus Silhouette inside pin -->
+            <g transform="translate(10, 8.5)">
+              <rect x="0" y="0" width="18" height="17" rx="3" fill="#ffffff"/>
+              <!-- Front Windshield -->
+              <rect x="2" y="2" width="14" height="6" rx="1.5" fill="#ff0000"/>
+              <!-- Headlights & Grill -->
+              <circle cx="3.5" cy="11" r="1.3" fill="#ff0000"/>
+              <circle cx="14.5" cy="11" r="1.3" fill="#ff0000"/>
+              <rect x="6.5" y="10.5" width="5" height="1.5" rx="0.5" fill="#ff0000"/>
+              <!-- Wheels -->
+              <rect x="2" y="15.5" width="3" height="2" rx="1" fill="#1e293b"/>
+              <rect x="13" y="15.5" width="3" height="2" rx="1" fill="#1e293b"/>
+            </g>
+          </svg>
         </div>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
+    iconSize: [38, 50],
+    iconAnchor: [19, 49]
   });
 }
 
@@ -1330,26 +1344,37 @@ async function renderTrackingView(trackData, isSilent = false) {
     }
 
     routeLine = L.polyline(activeRoadCoordinates, {
-      color: '#be123c',
-      weight: 6,
-      opacity: 0.9,
+      color: '#ff0000',
+      weight: 8,
+      opacity: 0.95,
       lineCap: 'round',
       lineJoin: 'round'
     }).addTo(trackMapInstance);
 
-    // Add Station Markers along the Route
+    // Official Station Focused Markers (clean highway layout without cluttered village circles)
     points.forEach((pt, idx) => {
       const isTerminus = (idx === 0 || idx === points.length - 1);
-      const m = L.circleMarker([pt.lat, pt.lng], {
-        radius: isTerminus ? 8 : 5,
-        color: isTerminus ? '#be123c' : '#fda4af',
-        fillColor: isTerminus ? '#fff' : '#be123c',
-        fillOpacity: 1,
-        weight: 2.5
-      }).addTo(trackMapInstance);
-
-      m.bindTooltip(`${pt.placeName} (${pt.time})`, { direction: 'top' });
-      stopMarkers.push(m);
+      if (isTerminus) {
+        const m = L.circleMarker([pt.lat, pt.lng], {
+          radius: 6,
+          color: '#ffffff',
+          fillColor: idx === 0 ? '#10b981' : '#ff0000',
+          fillOpacity: 1,
+          weight: 2
+        }).addTo(trackMapInstance);
+        m.bindTooltip(`<strong>${pt.placeName}</strong> (${pt.time})`, { direction: 'top' });
+        stopMarkers.push(m);
+      } else {
+        const m = L.circleMarker([pt.lat, pt.lng], {
+          radius: 3,
+          color: '#ffffff',
+          fillColor: '#dc2626',
+          fillOpacity: 0.9,
+          weight: 1.5
+        }).addTo(trackMapInstance);
+        m.bindTooltip(`${pt.placeName} (${pt.time})`, { direction: 'top' });
+        stopMarkers.push(m);
+      }
     });
 
     // Fit route bounds on initial load
@@ -1963,25 +1988,36 @@ function renderPnrTrackingView(trackData, isSilent = false) {
     }
 
     pnrRouteLine = L.polyline(fullRoad, {
-      color: '#be123c',
-      weight: 6,
-      opacity: 0.9,
+      color: '#ff0000',
+      weight: 8,
+      opacity: 0.95,
       lineCap: 'round',
       lineJoin: 'round'
     }).addTo(pnrMapInstance);
 
     points.forEach((pt, idx) => {
       const isTerminus = (idx === 0 || idx === points.length - 1);
-      const m = L.circleMarker([pt.lat, pt.lng], {
-        radius: isTerminus ? 8 : 5,
-        color: isTerminus ? '#be123c' : '#fda4af',
-        fillColor: isTerminus ? '#fff' : '#be123c',
-        fillOpacity: 1,
-        weight: 2.5
-      }).addTo(pnrMapInstance);
-
-      m.bindTooltip(`${pt.placeName} (${pt.time})`, { direction: 'top' });
-      pnrStopMarkers.push(m);
+      if (isTerminus) {
+        const m = L.circleMarker([pt.lat, pt.lng], {
+          radius: 6,
+          color: '#ffffff',
+          fillColor: idx === 0 ? '#10b981' : '#ff0000',
+          fillOpacity: 1,
+          weight: 2
+        }).addTo(pnrMapInstance);
+        m.bindTooltip(`<strong>${pt.placeName}</strong> (${pt.time})`, { direction: 'top' });
+        pnrStopMarkers.push(m);
+      } else {
+        const m = L.circleMarker([pt.lat, pt.lng], {
+          radius: 3,
+          color: '#ffffff',
+          fillColor: '#dc2626',
+          fillOpacity: 0.9,
+          weight: 1.5
+        }).addTo(pnrMapInstance);
+        m.bindTooltip(`${pt.placeName} (${pt.time})`, { direction: 'top' });
+        pnrStopMarkers.push(m);
+      }
     });
 
     pnrMapInstance.fitBounds(pnrRouteLine.getBounds(), { padding: [40, 40] });

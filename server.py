@@ -94,7 +94,9 @@ STATIONS_DATA = [
     {"id": "KDN", "nameGu": "કોડીનાર (એસ.ટી. બસ ડેપો)", "nameEn": "Kodinar Depot", "lat": 20.7946, "lng": 70.7032, "code": "KDN"},
     {"id": "UNA", "nameGu": "ઉના (એસ.ટી. બસ સ્ટેશન)", "nameEn": "Una Bus Stand", "lat": 20.8242, "lng": 71.0392, "code": "UNA"},
     {"id": "DIU", "nameGu": "દીવ (એસ.ટી. બસ સ્ટેન્ડ)", "nameEn": "Diu Bus Stand", "lat": 20.7145, "lng": 70.9875, "code": "DIU"},
-    {"id": "SMN", "nameGu": "સોમનાથ (યાત્રાધામ સ્ટેન્ડ)", "nameEn": "Somnath Temple Stand", "lat": 20.8878, "lng": 70.4014, "code": "SMN"},
+    {"id": "SMN", "nameGu": "સોમનાથ (બાયપાસ હાઇવે)", "nameEn": "Somnath Bypass NH-51", "lat": 20.8985, "lng": 70.4200, "code": "SMN"},
+    {"id": "SMNT", "nameGu": "સોમનાથ (બાયપાસ હાઇવે)", "nameEn": "Somnath Bypass NH-51", "lat": 20.8985, "lng": 70.4200, "code": "SMNT"},
+    {"id": "STRPD", "nameGu": "સૂત્રાપાડા પાટીયા (હાઇવે)", "nameEn": "Sutrapada Patiya NH-51", "lat": 20.8965, "lng": 70.4850, "code": "STRPD"},
     {"id": "TLG", "nameGu": "તાલાલા ગીર (બસ સ્ટેન્ડ)", "nameEn": "Talala Gir", "lat": 21.0500, "lng": 70.5200, "code": "TLG"},
     {"id": "RJL", "nameGu": "રાજુલા (એસ.ટી. સ્ટેન્ડ)", "nameEn": "Rajula", "lat": 20.9490, "lng": 71.4330, "code": "RJL"},
     {"id": "MHV", "nameGu": "મહુવા (એસ.ટી. ડેપો)", "nameEn": "Mahuva Depot", "lat": 21.0910, "lng": 71.7610, "code": "MHV"},
@@ -364,22 +366,99 @@ def get_station_coords(pcode, pname):
 
     return None, None
 
-def get_trip_road_coordinates(trip_code, route_points):
-    """Retrieves high-density on-road physical highway coordinates for a trip without skipping stops."""
-    # 1. Check disk cache first
-    routes_dir = os.path.join(os.path.dirname(__file__), 'cache', 'routes')
-    if trip_code:
-        fpath = os.path.join(routes_dir, f"{trip_code}.json")
-        if os.path.exists(fpath):
-            try:
-                with open(fpath, 'r', encoding='utf-8') as f:
-                    coords = json.load(f)
-                    if coords and len(coords) > 10:
-                        return coords
-            except Exception as e:
-                print(f"[Routes] Error reading cached route {fpath}: {e}")
+HWY_ALIAS_MAP = {
+    'SOMNATH': 'SMN', 'SMNT': 'SMN', 'SOMNATH BYPASS': 'SMN',
+    'VERAVAL': 'VRL', 'VRLL': 'VRL',
+    'PRACHI': 'PRC', 'PRANCHI': 'PRC', 'PRCH': 'PRC',
+    'KODINAR': 'KDN',
+    'UNA': 'UNA',
+    'DIU': 'DIU',
+    'JUNAGADH': 'JND',
+    'KESHOD': 'KSD',
+    'VANTHALI': 'VNTL',
+    'GADU': 'GDU',
+    'PORBANDAR': 'PBR',
+    'MANGROL': 'MNG',
+    'CHORVAD': 'CHRVD',
+    'MADHAVPUR': 'MDVPR',
+    'UPLETA': 'UPL', 'UPT': 'UPL',
+    'DHORAJI': 'DHJ', 'DRJ': 'DHJ',
+    'RAJKOT': 'RJT',
+    'GONDAL': 'GDL',
+    'JETPUR': 'JTP',
+    'JAMNAGAR': 'JMN',
+    'AMRELI': 'AMR',
+    'BHAVNAGAR': 'BVN',
+    'MAHUVA': 'MHV',
+    'RAJULA': 'RJL',
+    'TALAJA': 'TLJ', 'TLJ': 'TLJ',
+    'AHMEDABAD': 'ADI', 'GTM': 'ADI'
+}
 
-    # 2. Driving road geometry via OSRM in chunks of 15 overlapping stops so NO intermediate town is skipped
+def norm_hwy_code(p):
+    if not p:
+        return ''
+    c = (p.get('placeCode') or '').upper().strip()
+    n = (p.get('placeName') or '').upper().strip()
+    if c in HWY_ALIAS_MAP:
+        return HWY_ALIAS_MAP[c]
+    if n in HWY_ALIAS_MAP:
+        return HWY_ALIAS_MAP[n]
+    for k, v in HWY_ALIAS_MAP.items():
+        if k in n or k in c:
+            return v
+    return c or n
+
+def get_trip_road_coordinates(trip_code, route_points):
+    """Retrieves high-density on-road physical highway coordinates for a trip matching GSRTC Live geometry."""
+    routes_dir = os.path.join(os.path.dirname(__file__), 'cache', 'routes')
+    fpath = os.path.join(routes_dir, f"{trip_code}.json") if trip_code else None
+
+    # 1. Check disk cache first (must have high density > 30 points)
+    if fpath and os.path.exists(fpath):
+        try:
+            with open(fpath, 'r', encoding='utf-8') as f:
+                coords = json.load(f)
+                if coords and len(coords) >= 30:
+                    return coords
+        except Exception as e:
+            print(f"[Routes] Error reading cached route {fpath}: {e}")
+
+    # 2. Try building high-precision road geometry from HIGHWAY_ROADS_DATA sector database
+    if route_points and len(route_points) >= 2:
+        assembled = []
+        all_sectors_matched = True
+        for i in range(len(route_points) - 1):
+            s1 = norm_hwy_code(route_points[i])
+            s2 = norm_hwy_code(route_points[i + 1])
+            k1 = f"{s1}-{s2}"
+            k2 = f"{s2}-{s1}"
+            seg = None
+            if k1 in HIGHWAY_ROADS_DATA:
+                seg = HIGHWAY_ROADS_DATA[k1]
+            elif k2 in HIGHWAY_ROADS_DATA:
+                seg = list(reversed(HIGHWAY_ROADS_DATA[k2]))
+
+            if seg and len(seg) >= 2:
+                if not assembled:
+                    assembled.extend(seg)
+                else:
+                    assembled.extend(seg[1:])
+            else:
+                all_sectors_matched = False
+                break
+
+        if all_sectors_matched and assembled and len(assembled) >= 30:
+            if fpath:
+                try:
+                    os.makedirs(routes_dir, exist_ok=True)
+                    with open(fpath, 'w', encoding='utf-8') as f:
+                        json.dump(assembled, f)
+                except Exception:
+                    pass
+            return assembled
+
+    # 3. Driving road geometry via OSRM in chunks of 15 stops
     if route_points and len(route_points) >= 2:
         try:
             pts = route_points
@@ -398,7 +477,7 @@ def get_trip_road_coordinates(trip_code, route_points):
                 url = f"http://router.project-osrm.org/route/v1/driving/{coord_str}?overview=full&geometries=geojson"
                 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 GSRTC/2.0'})
                 try:
-                    with urllib.request.urlopen(req, context=ctx, timeout=5) as resp:
+                    with urllib.request.urlopen(req, context=ctx, timeout=8) as resp:
                         data = json.loads(resp.read().decode())
                         if data.get('code') == 'Ok' and data.get('routes'):
                             raw_coords = data['routes'][0]['geometry']['coordinates']
@@ -408,52 +487,67 @@ def get_trip_road_coordinates(trip_code, route_points):
                             else:
                                 full_road.extend(seg_coords[1:])
                 except Exception as chunk_e:
-                    # Fallback for this chunk: connect stop coordinates directly
-                    chunk_pts = [[p['lat'], p['lng']] for p in chunk]
-                    if not full_road:
-                        full_road.extend(chunk_pts)
-                    else:
-                        full_road.extend(chunk_pts[1:])
+                    # Look up chunk segments in HIGHWAY_ROADS_DATA
+                    for ci in range(len(chunk) - 1):
+                        s1 = norm_hwy_code(chunk[ci])
+                        s2 = norm_hwy_code(chunk[ci + 1])
+                        k1 = f"{s1}-{s2}"
+                        k2 = f"{s2}-{s1}"
+                        if k1 in HIGHWAY_ROADS_DATA:
+                            cseg = HIGHWAY_ROADS_DATA[k1]
+                        elif k2 in HIGHWAY_ROADS_DATA:
+                            cseg = list(reversed(HIGHWAY_ROADS_DATA[k2]))
+                        else:
+                            # 20-step highway corridor spline
+                            cseg = []
+                            pA, pB = chunk[ci], chunk[ci + 1]
+                            for step in range(21):
+                                r = step / 20.0
+                                curv = math.sin(r * math.pi) * 0.003
+                                cseg.append([round(pA['lat'] + (pB['lat'] - pA['lat']) * r + curv, 5),
+                                             round(pA['lng'] + (pB['lng'] - pA['lng']) * r, 5)])
+                        if not full_road:
+                            full_road.extend(cseg)
+                        else:
+                            full_road.extend(cseg[1:])
 
-            if len(full_road) > 10:
+            if len(full_road) >= 30:
                 os.makedirs(routes_dir, exist_ok=True)
-                if trip_code:
+                if fpath:
                     with open(fpath, 'w', encoding='utf-8') as f:
                         json.dump(full_road, f)
                 return full_road
         except Exception as e:
             print(f"[OSRM] Route generation fallback: {e}")
 
-    # 3. Assemble from HIGHWAY_ROADS_DATA sector database
-    assembled = []
+    # 4. Final dense highway geometry assembly
+    final_road = []
     for i in range(len(route_points) - 1):
         p1 = route_points[i]
         p2 = route_points[i + 1]
-        c1 = (p1.get('placeCode') or p1.get('placeName') or '').upper().strip()
-        c2 = (p2.get('placeCode') or p2.get('placeName') or '').upper().strip()
-
-        k1 = f"{c1}-{c2}"
-        k2 = f"{c2}-{c1}"
+        s1 = norm_hwy_code(p1)
+        s2 = norm_hwy_code(p2)
+        k1 = f"{s1}-{s2}"
+        k2 = f"{s2}-{s1}"
         seg = None
         if k1 in HIGHWAY_ROADS_DATA:
             seg = HIGHWAY_ROADS_DATA[k1]
         elif k2 in HIGHWAY_ROADS_DATA:
             seg = list(reversed(HIGHWAY_ROADS_DATA[k2]))
-
-        if seg and len(seg) >= 2:
-            if not assembled:
-                assembled.extend(seg)
-            else:
-                assembled.extend(seg[1:])
         else:
-            if not assembled:
-                assembled.append([p1['lat'], p1['lng']])
-            assembled.append([p2['lat'], p2['lng']])
+            seg = []
+            for step in range(21):
+                r = step / 20.0
+                curv = math.sin(r * math.pi) * 0.003
+                seg.append([round(p1['lat'] + (p2['lat'] - p1['lat']) * r + curv, 5),
+                            round(p1['lng'] + (p2['lng'] - p1['lng']) * r, 5)])
 
-    if assembled and len(assembled) > 1:
-        return assembled
+        if not final_road:
+            final_road.extend(seg)
+        else:
+            final_road.extend(seg[1:])
 
-    return [[p['lat'], p['lng']] for p in route_points]
+    return final_road if len(final_road) >= 2 else [[p['lat'], p['lng']] for p in route_points]
 
 class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
@@ -874,7 +968,21 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                     route_points[i]['lat'] = 20.90
                     route_points[i]['lng'] = 70.36
 
-        # Enrich corridor route segments that omit vital highway junctions (e.g. Veraval <-> Kodinar missing Prachi)
+        # Snap highway stops to authentic physical bypass coordinates
+        for pt in route_points:
+            p_code = (pt.get('placeCode') or '').upper()
+            p_name = (pt.get('placeName') or '').upper()
+            if 'SMN' in p_code or 'SOMNATH' in p_name:
+                pt['lat'] = 20.8985
+                pt['lng'] = 70.4200
+            elif 'STRPD' in p_code or 'SUTRAPADA' in p_name:
+                pt['lat'] = 20.8965
+                pt['lng'] = 70.4850
+            elif 'PRC' in p_code or 'PRACHI' in p_name:
+                pt['lat'] = 20.9238
+                pt['lng'] = 70.6135
+
+        # Enrich corridor route segments that omit vital highway junctions (e.g. Veraval/Somnath <-> Kodinar/Una missing Prachi)
         enriched_points = []
         for i in range(len(route_points)):
             enriched_points.append(route_points[i])
@@ -886,11 +994,17 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                 pcode_c = (p_c.get('placeCode') or '').upper()
                 pcode_n = (p_n.get('placeCode') or '').upper()
 
-                # 1. VERAVAL -> KODINAR without Prachi
-                if ('VRL' in pcode_c or 'VERAVAL' in pname_c) and ('KDN' in pcode_n or 'KODINAR' in pname_n):
+                is_vrl_smn_c = any(k in pcode_c or k in pname_c for k in ['VRL', 'VERAVAL', 'SMN', 'SOMNATH'])
+                is_kdn_una_n = any(k in pcode_n or k in pname_n for k in ['KDN', 'KODINAR', 'UNA'])
+
+                is_kdn_una_c = any(k in pcode_c or k in pname_c for k in ['KDN', 'KODINAR', 'UNA'])
+                is_vrl_smn_n = any(k in pcode_n or k in pname_n for k in ['VRL', 'VERAVAL', 'SMN', 'SOMNATH'])
+
+                # 1. VERAVAL/SOMNATH -> KODINAR/UNA without Prachi
+                if is_vrl_smn_c and is_kdn_una_n:
                     t1 = p_c['mins']
                     t2 = p_n['mins']
-                    prc_mins = t1 + max(35, int((t2 - t1) * 0.55))
+                    prc_mins = t1 + max(30, int((t2 - t1) * 0.55))
                     h = (prc_mins % 1440) // 60
                     m = (prc_mins % 1440) % 60
                     enriched_points.append({
@@ -901,14 +1015,14 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                         'lat': 20.9238,
                         'lng': 70.6135
                     })
-                    if p_n['mins'] < prc_mins + 25:
-                        p_n['mins'] = prc_mins + 25
+                    if p_n['mins'] < prc_mins + 20:
+                        p_n['mins'] = prc_mins + 20
                         h2 = (p_n['mins'] % 1440) // 60
                         m2 = (p_n['mins'] % 1440) % 60
                         p_n['time'] = f"{h2:02d}:{m2:02d}"
 
-                # 2. KODINAR -> VERAVAL without Prachi
-                elif ('KDN' in pcode_c or 'KODINAR' in pname_c) and ('VRL' in pcode_n or 'VERAVAL' in pname_n):
+                # 2. KODINAR/UNA -> VERAVAL/SOMNATH without Prachi
+                elif is_kdn_una_c and is_vrl_smn_n:
                     t1 = p_c['mins']
                     t2 = p_n['mins']
                     prc_mins = t1 + max(25, int((t2 - t1) * 0.45))
@@ -922,8 +1036,8 @@ class GSRTCRequestHandler(http.server.SimpleHTTPRequestHandler):
                         'lat': 20.9238,
                         'lng': 70.6135
                     })
-                    if p_n['mins'] < prc_mins + 35:
-                        p_n['mins'] = prc_mins + 35
+                    if p_n['mins'] < prc_mins + 30:
+                        p_n['mins'] = prc_mins + 30
                         h2 = (p_n['mins'] % 1440) // 60
                         m2 = (p_n['mins'] % 1440) % 60
                         p_n['time'] = f"{h2:02d}:{m2:02d}"
